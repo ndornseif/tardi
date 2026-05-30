@@ -4,22 +4,26 @@
 //! ## Jumps
 //! All jumps are executed modulo the program size, it is impossible to jump out of the program.
 
-use strum::EnumCount;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+use strum::EnumCount;
 
-use crate::consts::{MachineWord};
+#[allow(unused_imports)]
+use crate::consts::MachineWord;
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, TryFromPrimitive, IntoPrimitive, EnumCount)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Default, TryFromPrimitive, IntoPrimitive, EnumCount,
+)]
 pub enum OpCode {
     /// Does nothing.
     #[default]
     Nop,
-    /// Stop excution.
+    /// Stop execution.
     Halt,
     /// Push immediate to stack.
     PushImm,
     /// Pop value from input and push onto stack.
+    /// Nop if input is empty.
     PushIn,
     /// Push the value one to the stack.
     PushOne,
@@ -41,7 +45,7 @@ pub enum OpCode {
     /// Pop the top two values from the stack and push their maximum.
     Max,
     /// Pop the top two values from the stack and push their remainder.
-    /// The fist value is modulo divided by the second one.
+    /// The first value is modulo divided by the second one.
     ModDiv,
     /// Pop top value from the stack and push its square root.
     Sqrt,
@@ -76,4 +80,3 @@ pub enum OpCode {
     /// This does pop the value from the top of the stack and drop it.
     JmpTos,
 }
-

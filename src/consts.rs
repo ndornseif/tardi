@@ -1,6 +1,5 @@
-
-
 /// Maximum stack size in words.
+/// Performance suffers when this is not a power of two.
 pub const MAX_STACK: usize = 256;
 
 /// Hard limit on the number of instructions a program may execute.
@@ -10,5 +9,5 @@ pub type MachineWord = f32;
 
 pub type Instruction = u8;
 
-pub const INSTR_PER_WORD: usize = std::mem::size_of::<MachineWord>() / std::mem::size_of::<Instruction>();
-
+pub const INSTR_PER_WORD: usize =
+    std::mem::size_of::<MachineWord>() / std::mem::size_of::<Instruction>();
