@@ -5,7 +5,7 @@
 //! All jumps are executed modulo the program size, it is impossible to jump out of the program.
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use strum::EnumCount;
+use strum::{Display, EnumCount};
 
 #[allow(unused_imports)]
 use crate::consts::MachineWord;
@@ -14,6 +14,7 @@ use crate::consts::MachineWord;
 #[repr(u8)]
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Default, TryFromPrimitive, IntoPrimitive, EnumCount,
+    Display,
 )]
 pub enum OpCode {
     /// Does nothing.

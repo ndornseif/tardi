@@ -28,3 +28,4 @@ impl<T: Default + Clone> WrappingGet<T> for [T] {
         }
     }
 }
+
