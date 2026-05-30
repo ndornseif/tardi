@@ -59,6 +59,14 @@ impl<T: Default + Clone + Copy, const N: usize> Stack<T, N> {
         }
         self.values[(self.total_pushes - 1 - depth) % N]
     }
+
+    /// Return a [`Vec`] containing the stack contents from top to bottom.
+    /// Does not alter the stack.
+    pub fn to_vec(&self) -> Vec<T> {
+        (0..self.depth)
+            .map(|i| self.values[(self.total_pushes - 1 - i) % N])
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -131,7 +139,6 @@ mod tests {
         assert_eq!(1, stack.len(), "peek should not change length");
         let _ = stack.pop();
         assert_eq!(0, stack.len(), "after pop length should be 0");
-        // Popping from empty does not change len.
         let _ = stack.pop();
         assert_eq!(
             0,
@@ -147,7 +154,6 @@ mod tests {
             "full stack should have length MAX_STACK"
         );
         stack.push(MachineWord::default());
-        // Overflowing does not increase above max length.
         assert_eq!(
             MAX_STACK,
             stack.len(),

@@ -2,7 +2,7 @@
 
 use strum::EnumCount as _;
 
-use crate::consts::{INSTR_PER_WORD, Instruction, MAX_OUTPUT, MAX_STACK, MachineWord};
+use crate::consts::{INSTR_PER_WORD, Instruction, MAX_OUTPUT, MAX_RUNTIME, MAX_STACK, MachineWord};
 use crate::instr::OpCode;
 use crate::mw;
 use crate::stack::Stack;
@@ -28,6 +28,12 @@ static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
     PushZero => op_push_zero,
     PopOut   => op_pop_out,
     Add      => op_add,
+    Sub      => op_sub,
+    Mul      => op_mul,
+    Div      => op_div,
+    Max      => op_max,
+    Min      => op_min,
+    ModDiv   => op_mod_div,
 };
 
 /// The TARDI stack VM that executes [`OpCode`]s supplied as `Vec<u8>`.
@@ -41,6 +47,24 @@ pub struct Interpreter {
     input: Vec<MachineWord>,
     output: Stack<MachineWord, MAX_OUTPUT>,
     halted: bool,
+    execution_count: usize,
+}
+
+macro_rules! op_two_operand {
+    ($name:ident, $method:ident) => {
+        fn $name(&mut self) {
+            let b = self.stack.pop();
+            let a = self.stack.pop();
+            self.stack.push(a.$method(b));
+        }
+    };
+    ($name:ident, $op:tt) => {
+        fn $name(&mut self) {
+            let b = self.stack.pop();
+            let a = self.stack.pop();
+            self.stack.push(a $op b);
+        }
+    };
 }
 
 impl Interpreter {
@@ -60,6 +84,25 @@ impl Interpreter {
         self.halted
     }
 
+    /// Return contents of the output stack as Vec.
+    pub fn output(&self) -> Vec<MachineWord> {
+        self.output.to_vec()
+    }
+
+    /// Execute program.
+    /// Will end when:
+    ///     - Halt instruction called
+    ///     - End of program reached
+    ///     - [`MAX_RUNTIME`] instructions executed
+    pub fn execute(&mut self) {
+        while self.execution_count < MAX_RUNTIME {
+            self.dispatch();
+            if self.halted() {
+                break;
+            }
+        }
+    }
+
     /// Fetch and execute the instruction pointed to by the `program_counter`.
     ///
     /// If all instructions have been executed the interpreter will halt.
@@ -74,6 +117,7 @@ impl Interpreter {
         }
         let op = self.instructions[self.program_counter];
         self.program_counter += 1;
+        self.execution_count += 1;
         DISPATCH_TABLE[(op as usize) % OpCode::COUNT](self);
     }
 
@@ -114,11 +158,13 @@ impl Interpreter {
         self.output.push(self.stack.pop());
     }
 
-    fn op_add(&mut self) {
-        let operand_a = self.stack.pop();
-        let operand_b = self.stack.pop();
-        self.stack.push(operand_a + operand_b);
-    }
+    op_two_operand!(op_add, +);
+    op_two_operand!(op_sub, -);
+    op_two_operand!(op_mul, *);
+    op_two_operand!(op_div, /);
+    op_two_operand!(op_mod_div, %);
+    op_two_operand!(op_max, max);
+    op_two_operand!(op_min, min);
 }
 
 #[cfg(test)]
@@ -192,4 +238,78 @@ mod tests {
             "interpreter should be halted after running past end of program"
         );
     }
+
+    macro_rules! test_two_operand_opcode {
+        ($name:ident, $val_a:expr, $val_b:expr, $rslt:expr, $opcode:expr, $msg:expr) => {
+            #[test]
+            fn $name() {
+                let program: Vec<u8> = vec![
+                    OpCode::PushIn.into(),
+                    OpCode::PushIn.into(),
+                    $opcode.into(),
+                    OpCode::PopOut.into(),
+                ];
+                let data: Vec<MachineWord> = vec![mw!($val_a), mw!($val_b)];
+                let mut int = Interpreter::new_from_program(program, data.clone());
+                int.execute();
+                assert_eq!(vec![mw!($rslt)], int.output(), $msg);
+            }
+        };
+    }
+    test_two_operand_opcode!(
+        add_opcode,
+        5,
+        6,
+        11,
+        OpCode::Add,
+        "addition did not return expected sum"
+    );
+    test_two_operand_opcode!(
+        sub_opcode,
+        5,
+        6,
+        1,
+        OpCode::Sub,
+        "subtraction did not return expected difference"
+    );
+    test_two_operand_opcode!(
+        mul_opcode,
+        5,
+        6,
+        30,
+        OpCode::Mul,
+        "multiplication did not return expected product"
+    );
+    test_two_operand_opcode!(
+        div_opcode,
+        5,
+        30,
+        6,
+        OpCode::Div,
+        "division did not return expected quotiend"
+    );
+    test_two_operand_opcode!(
+        mod_div_opcode,
+        7,
+        30,
+        2,
+        OpCode::ModDiv,
+        "modulo division did not return expected remainder"
+    );
+    test_two_operand_opcode!(
+        min_opcode,
+        5,
+        6,
+        5,
+        OpCode::Min,
+        "minimum function did not return expected result"
+    );
+    test_two_operand_opcode!(
+        max_opcode,
+        5,
+        6,
+        6,
+        OpCode::Max,
+        "maximum function did not return expected result"
+    );
 }

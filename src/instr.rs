@@ -36,19 +36,19 @@ pub enum OpCode {
     /// Pop the top two values from the stack and push their sum.
     Add,
     /// Pop the top two values from the stack and push their difference.
-    /// The second value is subtracted from the first one.
+    /// The top value is subtracted from the second one.
     Sub,
     /// Pop the top two values from the stack and push their product.
     Mul,
     /// Pop the top two values from the stack and push their quotient.
-    /// The first value is divided by the second one.
+    /// The second value is divided by the top one.
     Div,
     /// Pop the top two values from the stack and push their minimum.
     Min,
     /// Pop the top two values from the stack and push their maximum.
     Max,
     /// Pop the top two values from the stack and push their remainder.
-    /// The first value is modulo divided by the second one.
+    /// The second value is modulo divided by the top one.
     ModDiv,
     /// Pop the top value from the stack and push its square root.
     Sqrt,
