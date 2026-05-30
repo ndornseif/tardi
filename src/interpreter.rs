@@ -31,6 +31,8 @@ static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
 };
 
 /// The TARDI stack VM that executes [`OpCode`]s supplied as `Vec<u8>`.
+/// Instructions are taken modulo the total number of opcodes,
+/// so every bytes maps to an instruction.
 #[derive(Default, Debug, Clone)]
 pub struct Interpreter {
     stack: Stack<MachineWord, MAX_STACK>,
@@ -42,6 +44,9 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
+    /// Initalize an new Interpreter with a Vec of [`Instruction`] values,
+    /// that can represent [`OpCode`]s or immediate values.  
+    /// Input data can be supplied as a Vec of [`MachineWord`]s.
     pub fn new_from_program(program: Vec<Instruction>, input: Vec<MachineWord>) -> Self {
         Self {
             instructions: program,
@@ -49,13 +54,22 @@ impl Interpreter {
             ..Default::default()
         }
     }
+    
+    /// If the Interpreter has been halted.
+    pub fn halted(&self) -> bool {
+        self.halted
+    }
 
+    /// Fetch and execute instruction pointed to by the `program_counter`.
+    /// 
+    /// If all instructions have been executed the interpreter will halt.
+    /// When halted this function becomes no-op.
     pub fn dispatch(&mut self) {
-        if self.program_counter >= self.instructions.len() {
-            self.halted = true;
+        if self.halted {
             return;
         }
-        if self.halted {
+        if self.program_counter >= self.instructions.len() {
+            self.halted = true;
             return;
         }
         let op = self.instructions[self.program_counter];

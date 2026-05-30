@@ -5,9 +5,9 @@
 /// Overflowing the stack wil drop the bottom element.
 /// This means that arbitrarily many elements can be pushed
 /// but only the last `N` elements can be poped back of.
-/// Trying to pop from an empty stack will return `MachineWord::default()`.
+/// Trying to pop from an empty stack will return `T::default()`.
 #[derive(Debug, Clone)]
-pub(crate) struct Stack<T, const N: usize> {
+pub struct Stack<T, const N: usize> {
     values: [T; N],
     /// Used to index the stack array as `values[total_pushes % N]`.
     total_pushes: usize,
@@ -70,20 +70,20 @@ mod tests {
     #[test]
     fn overflow_wraps() {
         let mut stack = Stack::<MachineWord, MAX_STACK>::default();
-        // Push five more elements that the stack can accept.
+        // Push five more elements that the stack can store.
         for i in 0..(MAX_STACK + 5) {
-            stack.push(i as MachineWord);
+            stack.push(mw!(i));
         }
         for i in (5..(MAX_STACK + 5)).rev() {
-            assert_eq!(i as MachineWord, stack.pop());
+            assert_eq!(mw!(i), stack.pop());
         }
     }
 
     #[test]
     fn underflow_returns_default() {
         let mut stack = Stack::<MachineWord, MAX_STACK>::default();
-        stack.push(1 as MachineWord);
-        assert_eq!(1 as MachineWord, stack.pop());
+        stack.push(mw!(1));
+        assert_eq!(mw!(1), stack.pop());
         for _ in 0..(2 * MAX_STACK) {
             assert_eq!(MachineWord::default(), stack.pop());
         }
@@ -93,10 +93,11 @@ mod tests {
     fn push_pop_peek() {
         let mut stack = Stack::<MachineWord, MAX_STACK>::default();
         stack.push(mw!(1));
-        stack.push(2 as MachineWord);
-        assert_eq!(2 as MachineWord, stack.peek());
-        assert_eq!(2 as MachineWord, stack.pop());
-        assert_eq!(1 as MachineWord, stack.pop());
+        stack.push(mw!(2));
+        assert_eq!(mw!(2), stack.peek());
+        assert_eq!(mw!(1), stack.peek_at(1));
+        assert_eq!(mw!(2), stack.pop());
+        assert_eq!(mw!(1), stack.pop());
         assert_eq!(MachineWord::default(), stack.pop());
     }
 
