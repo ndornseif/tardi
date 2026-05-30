@@ -6,6 +6,8 @@ use crate::consts::{INSTR_PER_WORD, Instruction, MAX_OUTPUT, MAX_RUNTIME, MAX_ST
 use crate::instr::OpCode;
 use crate::mw;
 use crate::stack::Stack;
+#[allow(unused_imports)] // Only needed when [`MachineWord`] is an integer.
+use crate::consts::Sqrt as _;
 use crate::util::{WrappingGet as _, word_from_instructions};
 
 type OpCodeHandler = fn(&mut Interpreter);
@@ -34,6 +36,7 @@ static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
     Max      => op_max,
     Min      => op_min,
     ModDiv   => op_mod_div,
+    Sqrt     => op_sqrt,
 };
 
 /// The TARDI stack VM that executes [`OpCode`]s supplied as `Vec<u8>`.
@@ -48,6 +51,21 @@ pub struct Interpreter {
     output: Stack<MachineWord, MAX_OUTPUT>,
     halted: bool,
     execution_count: usize,
+}
+
+macro_rules! op_one_operand {
+    ($name:ident, $method:ident) => {
+        fn $name(&mut self) {
+            let a = self.stack.pop();
+            self.stack.push(a.$method());
+        }
+    };
+    ($name:ident, $op:tt) => {
+        fn $name(&mut self) {
+            let a = self.stack.pop();
+            self.stack.push($op a);
+        }
+    };
 }
 
 macro_rules! op_two_operand {
@@ -129,6 +147,8 @@ impl Interpreter {
     }
 
     fn op_push_imm(&mut self) {
+        // TODO: instead of wrapping treat as zero.
+        // Add test for this.
         let mut imm_parts = [Instruction::default(); INSTR_PER_WORD];
         for (i, part) in imm_parts.iter_mut().enumerate() {
             *part = self.instructions.wrapping_get(self.program_counter + i);
@@ -165,6 +185,7 @@ impl Interpreter {
     op_two_operand!(op_mod_div, %);
     op_two_operand!(op_max, max);
     op_two_operand!(op_min, min);
+    op_one_operand!(op_sqrt, sqrt);
 }
 
 #[cfg(test)]
@@ -182,7 +203,7 @@ mod tests {
             "PC should advance past opcode and all immediate bytes"
         );
         assert_eq!(
-            f32::from_le_bytes([1, 2, 3, 4]),
+            MachineWord::from_le_bytes([1, 2, 3, 4]),
             int.stack.peek(),
             "immediate bytes should be decoded onto the stack"
         );
@@ -312,4 +333,20 @@ mod tests {
         OpCode::Max,
         "maximum function did not return expected result"
     );
+    macro_rules! test_one_operand_opcode {
+        ($name:ident, $val_a:expr, $rslt:expr, $opcode:expr, $msg:expr) => {
+            #[test]
+            fn $name() {
+                let program: Vec<u8> = vec![
+                    OpCode::PushIn.into(),
+                    $opcode.into(),
+                    OpCode::PopOut.into(),
+                ];
+                let mut int = Interpreter::new_from_program(program, vec![mw!($val_a)]);
+                int.execute();
+                assert_eq!(vec![mw!($rslt)], int.output(), $msg);
+            }
+        };
+    }
+    test_one_operand_opcode!(sqrt_opcode, 16, 4, OpCode::Sqrt, "square root did not return expected root");
 }
