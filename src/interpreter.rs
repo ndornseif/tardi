@@ -10,7 +10,7 @@ use crate::util::{WrappingGet as _, word_from_instructions};
 
 type OpCodeHandler = fn(&mut Interpreter);
 
-/// Builds the dispatch table where unspecified entries are filled with with `op_nop`.
+/// Builds the dispatch table where unspecified entries are filled with `op_nop`.
 macro_rules! make_dispatch_table {
     ($($variant:ident => $handler:ident),* $(,)?) => {{
         let mut t: [OpCodeHandler; OpCode::COUNT] = [Interpreter::op_nop; OpCode::COUNT];
@@ -19,7 +19,7 @@ macro_rules! make_dispatch_table {
     }};
 }
 
-/// Maps [`OpCode`] values to the interpreters operation funcion handles.
+/// Maps [`OpCode`] values to the interpreter's operation function handlers.
 static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
     Halt     => op_halt,
     PushImm  => op_push_imm,
@@ -32,7 +32,7 @@ static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
 
 /// The TARDI stack VM that executes [`OpCode`]s supplied as `Vec<u8>`.
 /// Instructions are taken modulo the total number of opcodes,
-/// so every bytes maps to an instruction.
+/// so every byte maps to a valid instruction.
 #[derive(Default, Debug, Clone)]
 pub struct Interpreter {
     stack: Stack<MachineWord, MAX_STACK>,
@@ -44,9 +44,9 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
-    /// Initalize an new Interpreter with a Vec of [`Instruction`] values,
-    /// that can represent [`OpCode`]s or immediate values.  
-    /// Input data can be supplied as a Vec of [`MachineWord`]s.
+    /// Initialize a new interpreter with a [`Vec`] of [`Instruction`] bytes,
+    /// which encode [`OpCode`]s and their immediate values.
+    /// Input data can be supplied as a [`Vec`] of [`MachineWord`]s.
     pub fn new_from_program(program: Vec<Instruction>, input: Vec<MachineWord>) -> Self {
         Self {
             instructions: program,
@@ -54,16 +54,16 @@ impl Interpreter {
             ..Default::default()
         }
     }
-    
-    /// If the Interpreter has been halted.
+
+    /// Returns `true` if the interpreter has halted.
     pub fn halted(&self) -> bool {
         self.halted
     }
 
-    /// Fetch and execute instruction pointed to by the `program_counter`.
-    /// 
+    /// Fetch and execute the instruction pointed to by the `program_counter`.
+    ///
     /// If all instructions have been executed the interpreter will halt.
-    /// When halted this function becomes no-op.
+    /// When halted, this function is a no-op.
     pub fn dispatch(&mut self) {
         if self.halted {
             return;
@@ -130,8 +130,16 @@ mod tests {
         let program = vec![OpCode::PushImm as u8, 1, 2, 3, 4];
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.dispatch();
-        assert_eq!(INSTR_PER_WORD + 1, int.program_counter);
-        assert_eq!(f32::from_le_bytes([1, 2, 3, 4]), int.stack.peek());
+        assert_eq!(
+            INSTR_PER_WORD + 1,
+            int.program_counter,
+            "PC should advance past opcode and all immediate bytes"
+        );
+        assert_eq!(
+            f32::from_le_bytes([1, 2, 3, 4]),
+            int.stack.peek(),
+            "immediate bytes should be decoded onto the stack"
+        );
     }
 
     #[test]
@@ -146,19 +154,42 @@ mod tests {
         let data: Vec<MachineWord> = vec![mw!(3)];
         let expected_sum = data[0] + mw!(1);
         let mut int = Interpreter::new_from_program(program, data.clone());
-        assert_eq!(MachineWord::default(), int.stack.peek());
-        int.dispatch(); // PushIn: pushes data[0] (last element)
-        assert_eq!(data[0], int.stack.peek());
+        assert_eq!(
+            MachineWord::default(),
+            int.stack.peek(),
+            "stack should be empty initially"
+        );
+        int.dispatch(); // PushIn: pushes data[0]
+        assert_eq!(
+            data[0],
+            int.stack.peek(),
+            "PushIn should push the input value"
+        );
         int.dispatch(); // PushOne
-        assert_eq!(mw!(1), int.stack.peek());
+        assert_eq!(mw!(1), int.stack.peek(), "PushOne should push 1");
         int.dispatch(); // PushZero
-        assert_eq!(MachineWord::default(), int.stack.peek());
+        assert_eq!(
+            MachineWord::default(),
+            int.stack.peek(),
+            "PushZero should push 0"
+        );
         int.dispatch(); // Add: 0 + 1
-        assert_eq!(mw!(1), int.stack.peek());
+        assert_eq!(mw!(1), int.stack.peek(), "Add(0, 1) should give 1");
         int.dispatch(); // Add: 1 + data[0]
-        assert_eq!(expected_sum, int.stack.peek());
+        assert_eq!(
+            expected_sum,
+            int.stack.peek(),
+            "Add should give the expected sum"
+        );
         int.dispatch(); // past end: halts
-        assert_eq!(expected_sum, int.stack.peek());
-        assert!(int.halted);
+        assert_eq!(
+            expected_sum,
+            int.stack.peek(),
+            "stack should be unchanged after halting"
+        );
+        assert!(
+            int.halted,
+            "interpreter should be halted after running past end of program"
+        );
     }
 }

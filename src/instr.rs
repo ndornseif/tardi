@@ -31,7 +31,7 @@ pub enum OpCode {
     /// Push the [`MachineWord`] default value to stack.  
     /// This is zero for the numeric types.
     PushZero,
-    /// Pop the top value from the stack and push in onto the output stack.
+    /// Pop the top value from the stack and push it onto the output stack.
     PopOut,
     /// Pop the top two values from the stack and push their sum.
     Add,
@@ -73,15 +73,15 @@ pub enum OpCode {
     /// Jump to immediate address if top of stack is zero.
     /// Does not pop the value.
     JmpZero,
-    /// Jump to immediate address if top of stack is smaller than ten epsilon.
-    /// Identical to `JmpZero` if [`MachineWord`] is an integer.
+    /// Jump to immediate address if top of stack is within ten times [`MachineWord::EPSILON`] of zero.
+    /// Identical to `JmpZero` if [`MachineWord`] is an integer type.
     /// Does not pop the value.
     JmpAprxZero,
     /// Jump to immediate address if top of stack is positive.
     /// Does not pop the value.
     JmpPos,
     /// Jump to address as specified by top of stack.
-    /// The value is converted to [`usize`] using rusts `as` casts.
+    /// The value is converted to [`usize`] using Rust's `as` cast.
     /// This does pop the value from the top of the stack and drop it.
     JmpTos,
 }
