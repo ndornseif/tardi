@@ -98,7 +98,11 @@ impl_format_imm_int!(i8, i16, i32, i64, i128, isize);
 /// All execept `sqrt` are just the identity function for ints.
 macro_rules! impl_float_funcs_for_int {
     ($($t:ty),+) => {
-        $(impl Sqrt for $t {
+        $(
+        impl Epsilon for $t {
+            const EPSILON: Self = 0;
+        }
+        impl Sqrt for $t {
             fn sqrt(self) -> Self { Self::isqrt(self) }
         }
         impl Round for $t {
@@ -112,7 +116,11 @@ macro_rules! impl_float_funcs_for_int {
         }
         impl Ceil for $t {
             fn ceil(self) -> Self { self }
-        })+
+        }
+        impl IsFinite for $t {
+            fn is_finite(self) -> bool { true }
+        }
+        )+
     };
 }
 impl_float_funcs_for_int!(i8, i16, i32, i64, i128, isize);
@@ -143,4 +151,14 @@ pub(crate) trait Floor {
 #[allow(dead_code)]
 pub(crate) trait Ceil {
     fn ceil(self) -> Self;
+}
+
+#[allow(dead_code)]
+pub(crate) trait Epsilon {
+    const EPSILON: Self;
+}
+
+#[allow(dead_code)]
+pub(crate) trait IsFinite {
+    fn is_finite(self) -> bool;
 }

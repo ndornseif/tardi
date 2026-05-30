@@ -3,7 +3,7 @@
 use strum::EnumCount as _;
 
 #[allow(unused_imports)] // Only needed when [`MachineWord`] is an integer.
-use crate::consts::{Ceil as _, Floor as _, Round as _, Sqrt as _, Trunc as _};
+use crate::consts::{Ceil as _, Floor as _, Round as _, Sqrt as _, Trunc as _, Epsilon as _, IsFinite as _};
 
 use crate::consts::{
     INSTR_PER_ADDRESS, INSTR_PER_WORD, Instruction, MAX_INSTRUCTIONS, MAX_OUTPUT, MAX_STACK,
@@ -52,6 +52,9 @@ static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
     Dup      => op_dup,
     Jmp      => op_jmp,
     JmpZero  => op_jmp_zero,
+    JmpAprxZero => op_jmp_aprx_zero,
+    JmpPos      => op_jmp_pos,
+    JmpFin      => op_jmp_fin,
 };
 
 /// Specifies the reason why Interpreter was halted.
@@ -133,7 +136,7 @@ impl Interpreter {
     }
 
     /// Returns reason why interpreter was halted.
-    /// If interpreter is not halted will return None.
+    /// Will return `None` if interpreter is not halted.
     pub fn halt_reason(&self) -> Option<HaltReason> {
         self.halted.then_some(self.halt_reason)
     }
@@ -254,10 +257,39 @@ impl Interpreter {
         self.program_counter = self.read_address_immediate();
     }
 
+    //TODO: Macro for all these float implementations
     fn op_jmp_zero(&mut self) {
         let addr = self.read_address_immediate();
         #[allow(clippy::float_cmp)]
         if self.stack.peek() == MachineWord::default() {
+            self.program_counter = addr;
+        } else {
+            self.program_counter += INSTR_PER_ADDRESS;
+        }
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    fn op_jmp_aprx_zero(&mut self) {
+        let addr = self.read_address_immediate();
+        if self.stack.peek().abs() <= (MachineWord::EPSILON * mw!(10)) {
+            self.program_counter = addr;
+        } else {
+            self.program_counter += INSTR_PER_ADDRESS;
+        }
+    }
+
+    fn op_jmp_pos(&mut self) {
+        let addr = self.read_address_immediate();
+        if self.stack.peek() > MachineWord::default() {
+            self.program_counter = addr;
+        } else {
+            self.program_counter += INSTR_PER_ADDRESS;
+        }
+    }
+
+    fn op_jmp_fin(&mut self) {
+        let addr = self.read_address_immediate();
+        if self.stack.peek().is_finite() {
             self.program_counter = addr;
         } else {
             self.program_counter += INSTR_PER_ADDRESS;
