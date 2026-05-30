@@ -10,6 +10,7 @@ use strum::EnumCount;
 #[allow(unused_imports)]
 use crate::consts::MachineWord;
 
+/// Represents a possible bytecode instruction for the interpreter.
 #[repr(u8)]
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Default, TryFromPrimitive, IntoPrimitive, EnumCount,
@@ -22,14 +23,16 @@ pub enum OpCode {
     Halt,
     /// Push immediate to stack.
     PushImm,
-    /// Pop value from input and push onto stack.
+    /// Pop value from input and push it onto stack.
     /// Nop if input is empty.
     PushIn,
-    /// Push the value one to the stack.
+    /// Push the literal value 1 to the stack.
     PushOne,
     /// Push the [`MachineWord`] default value to stack.  
     /// This is zero for the numeric types.
     PushZero,
+    /// Pop the top value from the stack and push in onto the output stack.
+    PopOut,
     /// Pop the top two values from the stack and push their sum.
     Add,
     /// Pop the top two values from the stack and push their difference.
@@ -47,17 +50,19 @@ pub enum OpCode {
     /// Pop the top two values from the stack and push their remainder.
     /// The first value is modulo divided by the second one.
     ModDiv,
-    /// Pop top value from the stack and push its square root.
+    /// Pop the top value from the stack and push its square root.
     Sqrt,
-    /// Pop top value from the stack and push its rounded value.
+    /// Pop the top value from the stack and push its rounded value.
+    /// Nop if [`MachineWord`] is an integer.
     Round,
-    /// Pop top value from the stack and push its truncated value.
+    /// Pop the top value from the stack and push its truncated value.
+    /// Nop if [`MachineWord`] is an integer.
     Trunc,
-    /// Pop top value from the stack and push its negated value.
+    /// Pop the top value from the stack and push its negated value.
     Neg,
-    /// Pop top value from the stack and push its absolute value.
+    /// Pop the top value from the stack and push its absolute value.
     Abs,
-    /// Pop top two values from the stack and push them back in reverse order.
+    /// Pop the top two values from the stack and push them back in reverse order.
     Swap,
     /// Pop the top value from the stack and drop it.
     Remove,
@@ -69,7 +74,7 @@ pub enum OpCode {
     /// Does not pop the value.
     JmpZero,
     /// Jump to immediate address if top of stack is smaller than ten epsilon.
-    /// Identical to `JmpZero` if [`MachineWord`] is integer.
+    /// Identical to `JmpZero` if [`MachineWord`] is an integer.
     /// Does not pop the value.
     JmpAprxZero,
     /// Jump to immediate address if top of stack is positive.
@@ -80,4 +85,3 @@ pub enum OpCode {
     /// This does pop the value from the top of the stack and drop it.
     JmpTos,
 }
-
