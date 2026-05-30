@@ -6,12 +6,13 @@ use strum::EnumCount as _;
 use crate::consts::{Ceil as _, Floor as _, Round as _, Sqrt as _, Trunc as _};
 
 use crate::consts::{
-    INSTR_PER_ADDRESS, INSTR_PER_WORD, Instruction, MAX_OUTPUT, MAX_RUNTIME, MAX_STACK, MachineWord,
+    INSTR_PER_ADDRESS, INSTR_PER_WORD, Instruction, MAX_INSTRUCTIONS, MAX_OUTPUT, MAX_STACK,
+    MachineWord,
 };
 use crate::instr::OpCode;
 use crate::mw;
 use crate::stack::Stack;
-use crate::util::{WrappingGet as _, address_from_instructions, word_from_instructions};
+use crate::util::{address_from_instructions, word_from_instructions};
 
 type OpCodeHandler = fn(&mut Interpreter);
 
@@ -53,6 +54,20 @@ static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
     JmpZero  => op_jmp_zero,
 };
 
+/// Specifies the reason why Interpreter was halted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum HaltReason {
+    /// Interpreter has not been halted or no reason defined.
+    #[default]
+    Undefined,
+    /// `Halt` instruction was executed.
+    HaltInstruction,
+    /// End of program was reached.
+    EndOfProgram,
+    /// `MAX_INSTRUCTIONS` instructions have been executed.
+    MaxInstructions,
+}
+
 /// The TARDI stack VM that executes [`OpCode`]s supplied as `Vec<u8>`.
 /// Instructions are taken modulo the total number of opcodes,
 /// so every byte maps to a valid instruction.
@@ -65,6 +80,7 @@ pub struct Interpreter {
     output: Stack<MachineWord, MAX_OUTPUT>,
     halted: bool,
     execution_count: usize,
+    halt_reason: HaltReason,
 }
 
 macro_rules! op_one_operand {
@@ -116,6 +132,12 @@ impl Interpreter {
         self.halted
     }
 
+    /// Returns reason why interpreter was halted.
+    /// If interpreter is not halted will return None.
+    pub fn halt_reason(&self) -> Option<HaltReason> {
+        self.halted.then_some(self.halt_reason)
+    }
+
     /// Return contents of the output stack as Vec.
     pub fn output(&self) -> Vec<MachineWord> {
         self.output.to_vec()
@@ -125,17 +147,19 @@ impl Interpreter {
     /// Will end when:
     ///     - Halt instruction called
     ///     - End of program reached
-    ///     - [`MAX_RUNTIME`] instructions executed
+    ///     - [`MAX_INSTRUCTIONS`] instructions executed
     pub fn execute(&mut self) {
-        while self.execution_count < MAX_RUNTIME {
+        while self.execution_count < MAX_INSTRUCTIONS {
             self.dispatch();
             if self.halted() {
-                break;
+                return;
             }
         }
+        self.halted = true;
+        self.halt_reason = HaltReason::MaxInstructions;
     }
 
-    /// Fetch and execute the instruction pointed to by the `program_counter`.
+    /// Fetch and execute the instruction at current PC.
     ///
     /// If all instructions have been executed the interpreter will halt.
     /// When halted, this function is a no-op.
@@ -145,6 +169,7 @@ impl Interpreter {
         }
         if self.program_counter >= self.instructions.len() {
             self.halted = true;
+            self.halt_reason = HaltReason::EndOfProgram;
             return;
         }
         let op = self.instructions[self.program_counter];
@@ -158,16 +183,17 @@ impl Interpreter {
 
     fn op_halt(&mut self) {
         self.halted = true;
+        self.halt_reason = HaltReason::HaltInstruction;
     }
 
     fn op_push_imm(&mut self) {
-        // TODO: instead of wrapping treat as zero.
-        // Adapt like code used in jmp instructions.
-        // Update relevant docs.
-        // Add test for this.
         let mut imm_parts = [Instruction::default(); INSTR_PER_WORD];
         for (i, part) in imm_parts.iter_mut().enumerate() {
-            *part = self.instructions.wrapping_get(self.program_counter + i);
+            *part = self
+                .instructions
+                .get(self.program_counter + i)
+                .copied()
+                .unwrap_or_default();
         }
         let imm = word_from_instructions(imm_parts);
         self.stack.push(imm);
@@ -209,8 +235,11 @@ impl Interpreter {
         self.stack.push(self.stack.peek());
     }
 
-    fn op_jmp(&mut self) {
-        let mut addr_parts = [Instruction::default(); INSTR_PER_WORD];
+    /// Read `INSTR_PER_ADDRESS` bytes from the current PC and decode them as a jump target.
+    /// Returns the target address taken modulo program length.
+    /// Bytes that extend past the end of the program are treated as zero.
+    fn read_address_immediate(&self) -> usize {
+        let mut addr_parts = [Instruction::default(); INSTR_PER_ADDRESS];
         for (i, part) in addr_parts.iter_mut().enumerate() {
             *part = self
                 .instructions
@@ -218,24 +247,18 @@ impl Interpreter {
                 .copied()
                 .unwrap_or_default();
         }
-        let addr = address_from_instructions(addr_parts) as usize;
-        self.program_counter = addr % self.instructions.len();
+        address_from_instructions(addr_parts) as usize % self.instructions.len()
+    }
+
+    fn op_jmp(&mut self) {
+        self.program_counter = self.read_address_immediate();
     }
 
     fn op_jmp_zero(&mut self) {
-        // TODO: Reduce code repetition in jump instructions.
-        let mut addr_parts = [Instruction::default(); INSTR_PER_WORD];
-        for (i, part) in addr_parts.iter_mut().enumerate() {
-            *part = self
-                .instructions
-                .get(self.program_counter + i)
-                .copied()
-                .unwrap_or_default();
-        }
-        let addr = address_from_instructions(addr_parts) as usize;
+        let addr = self.read_address_immediate();
         #[allow(clippy::float_cmp)]
         if self.stack.peek() == MachineWord::default() {
-            self.program_counter = addr % self.instructions.len();
+            self.program_counter = addr;
         } else {
             self.program_counter += INSTR_PER_ADDRESS;
         }
@@ -263,107 +286,150 @@ mod tests {
     use super::*;
 
     use crate::consts::Address;
-    use crate::util::instructions_from_address;
+    use crate::util::{instructions_from_address, instructions_from_word};
+
+    /// Build a program with a jump whose target is not yet known, returning the
+    /// offset in the program where the address bytes should be patched.
+    fn push_jmp(program: &mut Vec<Instruction>, opcode: OpCode) -> usize {
+        program.push(opcode.into());
+        let offset = program.len();
+        program.extend_from_slice(&instructions_from_address(0));
+        offset
+    }
+
+    /// Patch a previously reserved jump address slot with the given target.
+    fn patch_jmp(program: &mut Vec<Instruction>, offset: usize, target: usize) {
+        program[offset..offset + INSTR_PER_ADDRESS]
+            .copy_from_slice(&instructions_from_address(target as Address));
+    }
+
+    #[test]
+    fn halt_on_halt_instruction() {
+        let program = vec![OpCode::Nop.into(), OpCode::Halt.into()];
+        let mut int = Interpreter::new_from_program(program, vec![]);
+        int.execute();
+        assert_eq!(
+            Some(HaltReason::HaltInstruction),
+            int.halt_reason(),
+            "incorrect halt reason after halt instruction"
+        );
+    }
+
+    #[test]
+    fn halt_on_program_end() {
+        let program = vec![OpCode::Nop.into(), OpCode::Nop.into()];
+        let mut int = Interpreter::new_from_program(program, vec![]);
+        int.execute();
+        assert_eq!(
+            Some(HaltReason::EndOfProgram),
+            int.halt_reason(),
+            "incorrect halt reason after reaching end of program"
+        );
+    }
+
+    #[test]
+    fn halt_on_instruction_limit() {
+        let mut program = vec![OpCode::Nop.into()];
+        // Constructing an infinite loop.
+        let offset = push_jmp(&mut program, OpCode::Jmp);
+        patch_jmp(&mut program, offset, 0);
+        let mut int = Interpreter::new_from_program(program, vec![]);
+        int.execute();
+        assert_eq!(
+            Some(HaltReason::MaxInstructions),
+            int.halt_reason(),
+            "incorrect halt reason when reaching instruction limit"
+        );
+    }
 
     #[test]
     fn push_imm_reads_correct_bytes() {
-        // TODO: Adapt this for cases where `MachineWord` is not four bytes long.
-        let program = vec![OpCode::PushImm as Instruction, 1, 2, 3, 4];
+        let expected: MachineWord = mw!(1234);
+        let mut program = vec![OpCode::PushImm as Instruction];
+        program.extend_from_slice(&instructions_from_word(expected));
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.dispatch();
         assert_eq!(
             INSTR_PER_WORD + 1,
             int.program_counter,
-            "PC should advance past opcode and all immediate bytes"
+            "PC has not advanced past opcode and all immediate bytes"
         );
         assert_eq!(
-            MachineWord::from_le_bytes([1, 2, 3, 4]),
+            expected,
             int.stack.peek(),
-            "immediate bytes should be decoded onto the stack"
+            "immediate value not decoded onto the stack"
+        );
+    }
+
+    #[test]
+    fn push_imm_out_of_bounds_bytes_are_zero() {
+        // PushImm with no following bytes: missing immediate bytes default to zero.
+        let program = vec![OpCode::PushImm as Instruction];
+        let mut int = Interpreter::new_from_program(program, vec![]);
+        int.dispatch();
+        assert_eq!(
+            MachineWord::default(),
+            int.stack.peek(),
+            "out-of-bounds immediate bytes not treated as zero"
         );
     }
 
     #[test]
     fn basic_jmp() {
-        let mut program: Vec<Instruction> = vec![
-            OpCode::PushOne.into(),
-            OpCode::PushOne.into(),
-            OpCode::Jmp.into(),
-        ];
-        // Jump address is set to skip `Add`.
-        // If we dont jump far enough `Add` will be executed and the output becomes two.
-        // If we jump to far `PopOut` wont be executed and the output remains empty.
-        program.extend_from_slice(&instructions_from_address(
-            (program.len() + INSTR_PER_ADDRESS + 1) as Address,
-        ));
-        program.extend_from_slice(&[
-            OpCode::Add.into(),
-            OpCode::PopOut.into(),
-            OpCode::Halt.into(),
-        ]);
+        // `Jmp` should skip over add instruction leaving ine as top of stack.
+        let mut program: Vec<Instruction> = vec![OpCode::PushOne.into(), OpCode::PushOne.into()];
+        let jmp_offset = push_jmp(&mut program, OpCode::Jmp);
+        program.push(OpCode::Add.into()); // dead code: jumped over
+        let pop_pos = program.len();
+        program.extend_from_slice(&[OpCode::PopOut.into(), OpCode::Halt.into()]);
+        patch_jmp(&mut program, jmp_offset, pop_pos);
+
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.execute();
         assert_eq!(
             vec![mw!(1)],
             int.output(),
-            "jump did not correctly skip instruction"
+            "jmp did not skip add instruction"
         );
     }
 
     #[test]
-    fn jmp_zero() {
-        let mut program: Vec<Instruction> = vec![
-            OpCode::PushOne.into(),
-            OpCode::PushOne.into(),
-            OpCode::JmpZero.into(),
-        ];
-        // Jump address is set to skip `Add`.
-        // If we dont jump far enough `Add` will be executed and the output becomes two.
-        // If we jump to far `PopOut` wont be executed and the output remains empty.
-        // Since TOS is one JmpZero should not be taken.
-        //  -> Add is executed, output becomes two.
-        program.extend_from_slice(&instructions_from_address(
-            (program.len() + INSTR_PER_ADDRESS + 1) as Address,
-        ));
-        program.extend_from_slice(&[
-            OpCode::Add.into(),
-            OpCode::PopOut.into(),
-            OpCode::Halt.into(),
-        ]);
+    fn jmp_zero_not_taken() {
+        // TOS is one, so `JmpZero` should not be taken.
+        // Add runs, output = [1+1] = [2].
+        let mut program: Vec<Instruction> = vec![OpCode::PushOne.into(), OpCode::PushOne.into()];
+        let jmp_offset = push_jmp(&mut program, OpCode::JmpZero);
+        program.push(OpCode::Add.into());
+        let pop_pos = program.len();
+        program.extend_from_slice(&[OpCode::PopOut.into(), OpCode::Halt.into()]);
+        patch_jmp(&mut program, jmp_offset, pop_pos);
+
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.execute();
         assert_eq!(
             vec![mw!(2)],
             int.output(),
-            "jump if zero was not correcly ignored"
+            "JmpZero did jump when TOS is non-zero"
         );
+    }
 
-        let mut program: Vec<Instruction> = vec![
-            OpCode::PushOne.into(),
-            OpCode::PushOne.into(),
-            OpCode::Add.into(),
-            OpCode::PushZero.into(),
-            OpCode::JmpZero.into(),
-        ];
-        // Jump address is set to skip `Add`.
-        // If we dont jump far enough `Add` will be executed and the output becomes two.
-        // If we jump to far `PopOut` wont be executed and the output remains empty.
-        // Since TOS is zero JmpZero should be taken.
-        //  -> Add is not executed, output becomes zero.
-        program.extend_from_slice(&instructions_from_address(
-            (program.len() + INSTR_PER_ADDRESS + 1) as Address,
-        ));
-        program.extend_from_slice(&[
-            OpCode::Add.into(),
-            OpCode::PopOut.into(),
-            OpCode::Halt.into(),
-        ]);
+    #[test]
+    fn jmp_zero_taken() {
+        // TOS is zero, `JmpZero` jumps past `PushOne`.
+        // TOS remains zero.
+        let mut program: Vec<Instruction> = vec![OpCode::PushZero.into()];
+        let jmp_offset = push_jmp(&mut program, OpCode::JmpZero);
+        program.push(OpCode::PushOne.into()); // dead code: jumped over
+        let pop_pos = program.len();
+        program.extend_from_slice(&[OpCode::PopOut.into(), OpCode::Halt.into()]);
+        patch_jmp(&mut program, jmp_offset, pop_pos);
+
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.execute();
         assert_eq!(
-            vec![MachineWord::default()],
+            vec![mw!(0)],
             int.output(),
-            "jump if zero was not taken"
+            "JmpZero did not jump when TOS is zero"
         );
     }
     #[test]
@@ -390,7 +456,7 @@ mod tests {
             "PushIn should push the input value"
         );
         int.dispatch(); // PushOne
-        assert_eq!(mw!(1), int.stack.peek(), "PushOne should push 1");
+        assert_eq!(mw!(1), int.stack.peek(), "PushOne did not push one");
         int.dispatch(); // PushZero
         assert_eq!(
             MachineWord::default(),
@@ -398,22 +464,22 @@ mod tests {
             "PushZero should push 0"
         );
         int.dispatch(); // Add: 0 + 1
-        assert_eq!(mw!(1), int.stack.peek(), "Add(0, 1) should give 1");
-        int.dispatch(); // Add: 1 + data[0]
+        assert_eq!(mw!(1), int.stack.peek(), "add(0, 1) did not give one");
+        int.dispatch(); // Add: 1 + 3
         assert_eq!(
             expected_sum,
             int.stack.peek(),
-            "Add should give the expected sum"
+            "addition did not create expected sum"
         );
-        int.dispatch(); // past end: halts
+        int.dispatch(); // End of program
         assert_eq!(
             expected_sum,
             int.stack.peek(),
-            "stack should be unchanged after halting"
+            "stack not unchanged after halting"
         );
         assert!(
             int.halted,
-            "interpreter should be halted after running past end of program"
+            "interpreter not halted after past end of program"
         );
     }
 
@@ -551,4 +617,54 @@ mod tests {
         OpCode::Abs,
         "abs function did not return expected value"
     );
+
+    #[test]
+    fn swap_opcode() {
+        let program: Vec<Instruction> = vec![
+            OpCode::PushIn.into(),
+            OpCode::PushIn.into(),
+            OpCode::Swap.into(),
+            OpCode::PopOut.into(),
+            OpCode::Halt.into(),
+        ];
+        let mut int = Interpreter::new_from_program(program, vec![mw!(3), mw!(7)]);
+        int.execute();
+        assert_eq!(vec![mw!(7)], int.output(), "swap did not reorder elements");
+    }
+
+    #[test]
+    fn remove_opcode() {
+        let program: Vec<Instruction> = vec![
+            OpCode::PushIn.into(),
+            OpCode::PushIn.into(),
+            OpCode::Remove.into(),
+            OpCode::PopOut.into(),
+            OpCode::Halt.into(),
+        ];
+        let mut int = Interpreter::new_from_program(program, vec![mw!(3), mw!(7)]);
+        int.execute();
+        assert_eq!(
+            vec![mw!(7)],
+            int.output(),
+            "remove did not drop the top stack element"
+        );
+    }
+
+    #[test]
+    fn dup_opcode() {
+        let program: Vec<Instruction> = vec![
+            OpCode::PushIn.into(),
+            OpCode::Dup.into(),
+            OpCode::PopOut.into(),
+            OpCode::PopOut.into(),
+            OpCode::Halt.into(),
+        ];
+        let mut int = Interpreter::new_from_program(program, vec![mw!(5)]);
+        int.execute();
+        assert_eq!(
+            vec![mw!(5), mw!(5)],
+            int.output(),
+            "Dup did not produce two copies of the top stack element"
+        );
+    }
 }

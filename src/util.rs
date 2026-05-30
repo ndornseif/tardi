@@ -15,7 +15,7 @@ pub fn word_from_instructions(parts: [Instruction; INSTR_PER_WORD]) -> MachineWo
     unsafe { std::mem::transmute(parts) }
 }
 
-/// Turn a set of [`Instruction`]s into an [`AdDress`] type.
+/// Turn a set of [`Instruction`]s into an [`Address`] type.
 ///
 /// Used by the VM to accept jump target addresses from the bytecode.
 pub fn address_from_instructions(parts: [Instruction; INSTR_PER_ADDRESS]) -> Address {
@@ -40,22 +40,4 @@ pub fn instructions_from_address(addr: Address) -> [Instruction; INSTR_PER_ADDRE
     // SAFETY:
     // See: [`word_from_instruction`].
     unsafe { std::mem::transmute(addr) }
-}
-
-/// Enables a wrapping version of `.get()` that
-/// selects the element as: `slice[index % slice.len()]`.
-pub(crate) trait WrappingGet<T> {
-    /// Returns the element at position `index % len`.
-    /// If len is zero `T::default()` is returned.
-    fn wrapping_get(&self, index: usize) -> T;
-}
-
-impl<T: Default + Clone> WrappingGet<T> for [T] {
-    fn wrapping_get(&self, index: usize) -> T {
-        if self.is_empty() {
-            T::default()
-        } else {
-            self[index % self.len()].clone()
-        }
-    }
 }

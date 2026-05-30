@@ -13,7 +13,7 @@ pub const MAX_STACK: usize = 256;
 pub const MAX_OUTPUT: usize = 16;
 
 /// Hard limit on the number of instructions a program may execute.
-pub const MAX_RUNTIME: usize = u16::MAX as usize;
+pub const MAX_INSTRUCTIONS: usize = u16::MAX as usize;
 
 /// The type used to fill the stack and do calculations with.
 ///
@@ -43,7 +43,7 @@ macro_rules! mw {
 /// This is a consequence of the way handling of immediate values works.  
 /// Parts of the code are not fully tested when this is not [`u8`].
 /// A change here also requires changing the `#[repr(type)]` statement for the
-/// [`OpCode`] enum.
+/// [`crate::instr::OpCode`] enum.
 ///
 /// ***All*** possible sequences of bytes (of the correct length) must represent a
 /// valid value of this type.

@@ -95,7 +95,7 @@ pub enum OpCode {
     /// The value is converted to [`usize`] using Rust's `as` cast.
     /// If the conversion to [`usize`] is impossible because the float is not finite
     /// the jump will be skipped.
-    /// This instruction does pop the value from the top of the stack and drop it,
+    /// This instruction does pop the value from the top of the stack and drops it,
     /// even if the jump was skipped.
     JmpTos,
 }
