@@ -1,11 +1,12 @@
 //! General interpreter functionality
 
-use strum::EnumCount;
+use strum::EnumCount as _;
 
 use crate::consts::{INSTR_PER_WORD, Instruction, MAX_STACK, MachineWord};
 use crate::instr::OpCode;
-use crate::util::{WrappingGet, word_from_instructions};
+use crate::util::{WrappingGet as _, word_from_instructions};
 
+#[derive(Debug, Clone)]
 pub struct Stack {
     stack: [MachineWord; MAX_STACK],
     total_pushes: usize,
@@ -58,20 +59,27 @@ impl Stack {
         self.stack[(self.total_pushes - 1 - depth) % MAX_STACK]
     }
 }
+
 type OpCodeHandler = fn(&mut Interpreter);
 
-static DISPATCH: [OpCodeHandler; OpCode::COUNT] = {
-    let mut t: [OpCodeHandler; OpCode::COUNT] = [Interpreter::op_nop; OpCode::COUNT];
-    t[OpCode::Halt as usize] = Interpreter::op_halt;
-    t[OpCode::PushImm as usize] = Interpreter::op_push_imm;
-    t[OpCode::PushIn as usize] = Interpreter::op_push_in;
-    t[OpCode::PushOne as usize] = Interpreter::op_push_one;
-    t[OpCode::PushZero as usize] = Interpreter::op_push_zero;
-    t[OpCode::Add as usize] = Interpreter::op_add;
-    t
-};
+/// Builds the dispatch table where unspecified entries are filled with with `op_nop`.
+macro_rules! make_dispatch_table {
+    ($($variant:ident => $handler:ident),* $(,)?) => {{
+        let mut t: [OpCodeHandler; OpCode::COUNT] = [Interpreter::op_nop; OpCode::COUNT];
+        $(t[OpCode::$variant as usize] = Interpreter::$handler;)*
+        t
+    }};
+}
 
-#[derive(Default)]
+pub static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
+    Halt     => op_halt,
+    PushImm  => op_push_imm,
+    PushIn   => op_push_in,
+    PushOne  => op_push_one,
+    PushZero => op_push_zero,
+    Add      => op_add,
+};
+#[derive(Default, Debug, Clone)]
 pub struct Interpreter {
     stack: Stack,
     instructions: Vec<Instruction>,
@@ -99,17 +107,18 @@ impl Interpreter {
         }
         let op = self.instructions[self.program_counter];
         self.program_counter += 1;
-        DISPATCH[(op as usize) % OpCode::COUNT](self);
+        DISPATCH_TABLE[(op as usize) % OpCode::COUNT](self);
     }
 
+    #[allow(clippy::unused_self)]
     fn op_nop(&mut self) {}
     fn op_halt(&mut self) {
         self.halted = true;
     }
     fn op_push_imm(&mut self) {
         let mut imm_parts = [Instruction::default(); INSTR_PER_WORD];
-        for i in 0..INSTR_PER_WORD {
-            imm_parts[i] = self.instructions.wrapping_get(self.program_counter + i);
+        for (i, part) in imm_parts.iter_mut().enumerate() {
+            *part = self.instructions.wrapping_get(self.program_counter + i);
         }
         let imm = word_from_instructions(imm_parts);
         self.stack.push(imm);
@@ -122,10 +131,10 @@ impl Interpreter {
         self.stack.push(self.input.pop().unwrap());
     }
     fn op_push_one(&mut self) {
-        self.stack.push(1 as MachineWord)
+        self.stack.push(1 as MachineWord);
     }
     fn op_push_zero(&mut self) {
-        self.stack.push(MachineWord::default())
+        self.stack.push(MachineWord::default());
     }
     fn op_add(&mut self) {
         let operand_a = self.stack.pop();

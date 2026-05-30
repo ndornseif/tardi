@@ -80,3 +80,4 @@ pub enum OpCode {
     /// This does pop the value from the top of the stack and drop it.
     JmpTos,
 }
+
