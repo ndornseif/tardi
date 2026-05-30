@@ -2,7 +2,7 @@
 
 use strum::EnumCount as _;
 
-use crate::consts::{FormatImm as _, INSTR_PER_WORD, Instruction};
+use crate::consts::{FormatImm as _, INSTR_PER_WORD, INSTRUCTION_SIZE, Instruction};
 use crate::instr::OpCode;
 use crate::util::word_from_instructions;
 
@@ -23,11 +23,18 @@ use crate::util::word_from_instructions;
 /// 0x000c: 29             Sqrt           
 /// 0x000d: 01             Halt           
 /// ```
-/// Bytes that extend past the end of the program are treated as zero 
-/// when used for immediates.
-pub fn disassemble_program(w: &mut impl std::fmt::Write, program: &[Instruction]) -> std::fmt::Result {
+/// When an immediate value would extend beyond the end
+/// of the program the missing values are assumed as zero.
+///
+/// # Errors
+/// Will bubble up errors from `write!` operations on `w`.
+#[allow(clippy::missing_panics_doc)]
+pub fn disassemble_program(
+    w: &mut impl std::fmt::Write,
+    program: &[Instruction],
+) -> std::fmt::Result {
+    const WORD_DIGITS: usize = INSTRUCTION_SIZE * 2; // Number of hex digits
     let mut itr = program.iter().enumerate();
-    // TODO: This loop only works when Instruction is u8.
     while let Some((i, &byte)) = itr.next() {
         #[allow(clippy::cast_possible_truncation)]
         let op = OpCode::try_from(byte % OpCode::COUNT as Instruction)
@@ -40,18 +47,19 @@ pub fn disassemble_program(w: &mut impl std::fmt::Write, program: &[Instruction]
                     *part = itr.next().map_or(0, |(_, &b)| b);
                 }
                 let imm = word_from_instructions(imm_parts);
-                write!(w, "{i:<#06x}: {byte:02x}")?;
+                write!(w, "{i:#08x}: {byte:0WORD_DIGITS$x}")?;
                 for p in &imm_parts {
-                    write!(w, " {p:02x}")?;
+                    write!(w, " {p:0WORD_DIGITS$x}")?;
                 }
-                writeln!(w, " {op:<15} {}", imm.format_imm())?;
+                writeln!(w, " {op:15} {}", imm.format_imm())?;
             }
             _ => {
-                write!(w, "{i:<#06x}: {byte:02x}")?;
-                for _ in 0..INSTR_PER_WORD {
-                    write!(w, "   ")?;
-                }
-                writeln!(w, " {op:<15}")?;
+                writeln!(
+                    w,
+                    "{i:#08x}: {byte:0WORD_DIGITS$x}{:width$} {op:15}",
+                    "",
+                    width = INSTR_PER_WORD * (WORD_DIGITS + 1)
+                )?;
             }
         }
     }

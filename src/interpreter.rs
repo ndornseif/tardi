@@ -2,13 +2,16 @@
 
 use strum::EnumCount as _;
 
-use crate::consts::{INSTR_PER_WORD, Instruction, MAX_OUTPUT, MAX_RUNTIME, MAX_STACK, MachineWord};
+#[allow(unused_imports)] // Only needed when [`MachineWord`] is an integer.
+use crate::consts::{Ceil as _, Floor as _, Round as _, Sqrt as _, Trunc as _};
+
+use crate::consts::{
+    INSTR_PER_ADDRESS, INSTR_PER_WORD, Instruction, MAX_OUTPUT, MAX_RUNTIME, MAX_STACK, MachineWord,
+};
 use crate::instr::OpCode;
 use crate::mw;
 use crate::stack::Stack;
-#[allow(unused_imports)] // Only needed when [`MachineWord`] is an integer.
-use crate::consts::Sqrt as _;
-use crate::util::{WrappingGet as _, word_from_instructions};
+use crate::util::{WrappingGet as _, address_from_instructions, word_from_instructions};
 
 type OpCodeHandler = fn(&mut Interpreter);
 
@@ -37,6 +40,17 @@ static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
     Min      => op_min,
     ModDiv   => op_mod_div,
     Sqrt     => op_sqrt,
+    Round    => op_round,
+    Trunc    => op_trunc,
+    Ceil     => op_ceil,
+    Floor    => op_floor,
+    Neg      => op_neg,
+    Abs      => op_abs,
+    Swap     => op_swap,
+    Remove   => op_remove,
+    Dup      => op_dup,
+    Jmp      => op_jmp,
+    JmpZero  => op_jmp_zero,
 };
 
 /// The TARDI stack VM that executes [`OpCode`]s supplied as `Vec<u8>`.
@@ -148,6 +162,8 @@ impl Interpreter {
 
     fn op_push_imm(&mut self) {
         // TODO: instead of wrapping treat as zero.
+        // Adapt like code used in jmp instructions.
+        // Update relevant docs.
         // Add test for this.
         let mut imm_parts = [Instruction::default(); INSTR_PER_WORD];
         for (i, part) in imm_parts.iter_mut().enumerate() {
@@ -178,6 +194,53 @@ impl Interpreter {
         self.output.push(self.stack.pop());
     }
 
+    fn op_swap(&mut self) {
+        let a = self.stack.pop();
+        let b = self.stack.pop();
+        self.stack.push(a);
+        self.stack.push(b);
+    }
+
+    fn op_remove(&mut self) {
+        let _ = self.stack.pop();
+    }
+
+    fn op_dup(&mut self) {
+        self.stack.push(self.stack.peek());
+    }
+
+    fn op_jmp(&mut self) {
+        let mut addr_parts = [Instruction::default(); INSTR_PER_WORD];
+        for (i, part) in addr_parts.iter_mut().enumerate() {
+            *part = self
+                .instructions
+                .get(self.program_counter + i)
+                .copied()
+                .unwrap_or_default();
+        }
+        let addr = address_from_instructions(addr_parts) as usize;
+        self.program_counter = addr % self.instructions.len();
+    }
+
+    fn op_jmp_zero(&mut self) {
+        // TODO: Reduce code repetition in jump instructions.
+        let mut addr_parts = [Instruction::default(); INSTR_PER_WORD];
+        for (i, part) in addr_parts.iter_mut().enumerate() {
+            *part = self
+                .instructions
+                .get(self.program_counter + i)
+                .copied()
+                .unwrap_or_default();
+        }
+        let addr = address_from_instructions(addr_parts) as usize;
+        #[allow(clippy::float_cmp)]
+        if self.stack.peek() == MachineWord::default() {
+            self.program_counter = addr % self.instructions.len();
+        } else {
+            self.program_counter += INSTR_PER_ADDRESS;
+        }
+    }
+
     op_two_operand!(op_add, +);
     op_two_operand!(op_sub, -);
     op_two_operand!(op_mul, *);
@@ -185,12 +248,22 @@ impl Interpreter {
     op_two_operand!(op_mod_div, %);
     op_two_operand!(op_max, max);
     op_two_operand!(op_min, min);
+
     op_one_operand!(op_sqrt, sqrt);
+    op_one_operand!(op_round, round);
+    op_one_operand!(op_trunc, trunc);
+    op_one_operand!(op_ceil, ceil);
+    op_one_operand!(op_floor, floor);
+    op_one_operand!(op_neg, -);
+    op_one_operand!(op_abs, abs);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::consts::Address;
+    use crate::util::instructions_from_address;
 
     #[test]
     fn push_imm_reads_correct_bytes() {
@@ -210,6 +283,89 @@ mod tests {
         );
     }
 
+    #[test]
+    fn basic_jmp() {
+        let mut program: Vec<Instruction> = vec![
+            OpCode::PushOne.into(),
+            OpCode::PushOne.into(),
+            OpCode::Jmp.into(),
+        ];
+        // Jump address is set to skip `Add`.
+        // If we dont jump far enough `Add` will be executed and the output becomes two.
+        // If we jump to far `PopOut` wont be executed and the output remains empty.
+        program.extend_from_slice(&instructions_from_address(
+            (program.len() + INSTR_PER_ADDRESS + 1) as Address,
+        ));
+        program.extend_from_slice(&[
+            OpCode::Add.into(),
+            OpCode::PopOut.into(),
+            OpCode::Halt.into(),
+        ]);
+        let mut int = Interpreter::new_from_program(program, vec![]);
+        int.execute();
+        assert_eq!(
+            vec![mw!(1)],
+            int.output(),
+            "jump did not correctly skip instruction"
+        );
+    }
+
+    #[test]
+    fn jmp_zero() {
+        let mut program: Vec<Instruction> = vec![
+            OpCode::PushOne.into(),
+            OpCode::PushOne.into(),
+            OpCode::JmpZero.into(),
+        ];
+        // Jump address is set to skip `Add`.
+        // If we dont jump far enough `Add` will be executed and the output becomes two.
+        // If we jump to far `PopOut` wont be executed and the output remains empty.
+        // Since TOS is one JmpZero should not be taken.
+        //  -> Add is executed, output becomes two.
+        program.extend_from_slice(&instructions_from_address(
+            (program.len() + INSTR_PER_ADDRESS + 1) as Address,
+        ));
+        program.extend_from_slice(&[
+            OpCode::Add.into(),
+            OpCode::PopOut.into(),
+            OpCode::Halt.into(),
+        ]);
+        let mut int = Interpreter::new_from_program(program, vec![]);
+        int.execute();
+        assert_eq!(
+            vec![mw!(2)],
+            int.output(),
+            "jump if zero was not correcly ignored"
+        );
+
+        let mut program: Vec<Instruction> = vec![
+            OpCode::PushOne.into(),
+            OpCode::PushOne.into(),
+            OpCode::Add.into(),
+            OpCode::PushZero.into(),
+            OpCode::JmpZero.into(),
+        ];
+        // Jump address is set to skip `Add`.
+        // If we dont jump far enough `Add` will be executed and the output becomes two.
+        // If we jump to far `PopOut` wont be executed and the output remains empty.
+        // Since TOS is zero JmpZero should be taken.
+        //  -> Add is not executed, output becomes zero.
+        program.extend_from_slice(&instructions_from_address(
+            (program.len() + INSTR_PER_ADDRESS + 1) as Address,
+        ));
+        program.extend_from_slice(&[
+            OpCode::Add.into(),
+            OpCode::PopOut.into(),
+            OpCode::Halt.into(),
+        ]);
+        let mut int = Interpreter::new_from_program(program, vec![]);
+        int.execute();
+        assert_eq!(
+            vec![MachineWord::default()],
+            int.output(),
+            "jump if zero was not taken"
+        );
+    }
     #[test]
     fn dispatch_sequence() {
         let program: Vec<Instruction> = vec![
@@ -338,16 +494,61 @@ mod tests {
         ($name:ident, $val_a:expr, $rslt:expr, $opcode:expr, $msg:expr) => {
             #[test]
             fn $name() {
-                let program: Vec<Instruction> = vec![
-                    OpCode::PushIn.into(),
-                    $opcode.into(),
-                    OpCode::PopOut.into(),
-                ];
+                let program: Vec<Instruction> =
+                    vec![OpCode::PushIn.into(), $opcode.into(), OpCode::PopOut.into()];
                 let mut int = Interpreter::new_from_program(program, vec![mw!($val_a)]);
                 int.execute();
                 assert_eq!(vec![mw!($rslt)], int.output(), $msg);
             }
         };
     }
-    test_one_operand_opcode!(sqrt_opcode, 16, 4, OpCode::Sqrt, "square root did not return expected root");
+    test_one_operand_opcode!(
+        sqrt_opcode,
+        16,
+        4,
+        OpCode::Sqrt,
+        "square root did not return expected root"
+    );
+    test_one_operand_opcode!(
+        round_opcode,
+        5.49,
+        5,
+        OpCode::Round,
+        "rounding function did not return expected value"
+    );
+    test_one_operand_opcode!(
+        trunc_opcode,
+        5.99,
+        5,
+        OpCode::Trunc,
+        "truncation function did not return expected value"
+    );
+    test_one_operand_opcode!(
+        ceil_opcode,
+        5.01,
+        6,
+        OpCode::Ceil,
+        "ceiling function did not return expected value"
+    );
+    test_one_operand_opcode!(
+        floor_opcode,
+        -5.01,
+        -6,
+        OpCode::Floor,
+        "floor function did not return expected value"
+    );
+    test_one_operand_opcode!(
+        neg_opcode,
+        6,
+        -6,
+        OpCode::Neg,
+        "negation function did not return expected value"
+    );
+    test_one_operand_opcode!(
+        abs_opcode,
+        -4,
+        4,
+        OpCode::Abs,
+        "abs function did not return expected value"
+    );
 }

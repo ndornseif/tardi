@@ -3,18 +3,18 @@
 //!
 //! ## Jumps
 //! All jumps are executed modulo the program size, it is impossible to jump out of the program.
+//! A jump destination address is always express as an unsigned integer type defined by [`Address`].
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use strum::{Display, EnumCount};
 
 #[allow(unused_imports)]
-use crate::consts::MachineWord;
+use crate::consts::{Address, MachineWord};
 
 /// Represents a possible bytecode instruction for the interpreter.
 #[repr(u8)]
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Default, TryFromPrimitive, IntoPrimitive, EnumCount,
-    Display,
+    Debug, Clone, Copy, PartialEq, Eq, Default, TryFromPrimitive, IntoPrimitive, EnumCount, Display,
 )]
 pub enum OpCode {
     /// Does nothing.
@@ -59,6 +59,12 @@ pub enum OpCode {
     /// Pop the top value from the stack and push its truncated value.
     /// Nop if [`MachineWord`] is an integer.
     Trunc,
+    /// Pop the top value from the stack and push its ceiling value.
+    /// Nop if [`MachineWord`] is an integer.
+    Ceil,
+    /// Pop the top value from the stack and push its floor value.
+    /// Nop if [`MachineWord`] is an integer.
+    Floor,
     /// Pop the top value from the stack and push its negated value.
     Neg,
     /// Pop the top value from the stack and push its absolute value.
@@ -69,7 +75,7 @@ pub enum OpCode {
     Remove,
     /// Push another copy of the top value onto the stack.
     Dup,
-    /// Jump to immediate address.
+    /// Jump to immediate address. Addresses must be unsigned integers.
     Jmp,
     /// Jump to immediate address if top of stack is zero.
     /// Does not pop the value.
@@ -81,8 +87,15 @@ pub enum OpCode {
     /// Jump to immediate address if top of stack is positive.
     /// Does not pop the value.
     JmpPos,
+    /// Jump to immediate address if top of stack is finite.
+    /// Does not pop the value.
+    /// Will always jump if [`MachineWord`] is an integer.
+    JmpFin,
     /// Jump to address as specified by top of stack.
     /// The value is converted to [`usize`] using Rust's `as` cast.
-    /// This does pop the value from the top of the stack and drop it.
+    /// If the conversion to [`usize`] is impossible because the float is not finite
+    /// the jump will be skipped.
+    /// This instruction does pop the value from the top of the stack and drop it,
+    /// even if the jump was skipped.
     JmpTos,
 }
