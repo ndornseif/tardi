@@ -3,7 +3,7 @@ TARDI is a tiny stack based VM that was designed to allow program generation via
 All possible sequences of bytes are valid TARDI programs.
 
 ## Bytecode
-Instructions are encoded as bytes. During decoding they are taken modulo the total number of instructions to that every byte maps to some valid instruction.
+Instructions are encoded as bytes. During decoding they are taken modulo the total number of instructions. This means that every possible byte maps to some valid instruction.
 
 ## The Stack
 The stack size is set by the `MAX_STACK` constant, the data type it contains by the `MachineWord` type.
