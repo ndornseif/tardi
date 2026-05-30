@@ -10,7 +10,7 @@ pub const MAX_STACK: usize = 256;
 /// If more values than these are output the oldest are discarded.
 /// This behaviour is the same as the stack machines main stack.
 /// Performance suffers when this is not a power of two.
-pub const MAX_OUTPUT: usize = 256;
+pub const MAX_OUTPUT: usize = 16;
 
 /// Hard limit on the number of instructions a program may execute.
 pub const MAX_RUNTIME: usize = u16::MAX as usize;
@@ -37,7 +37,8 @@ macro_rules! mw {
 /// Type used to encode bytecode instructions.
 ///
 /// The length in bits of `Instruction` must be smaller or equal to that of `MachineWord`.
-/// This is a consequence of the way handling of immediate values works.
+/// This is a consequence of the way handling of immediate values works.  
+/// Parts of the code are not fully tested when this is not [`u8`].
 ///
 /// ***All*** possible sequences of bytes (of the correct length) must represent a
 /// valid value of this type.
@@ -51,7 +52,8 @@ pub const INSTR_PER_WORD: usize =
 ///
 /// Effectivley renaming isqrt to sqrt for the ints.
 /// This is done to allow [`MachineWord`] to be int or float.
-pub trait Sqrt {
+#[allow(dead_code)] // Since its not used when `MachineWord` is int.
+pub(crate) trait Sqrt {
     /// Returns the square root of `self`.
     #[allow(clippy::return_self_not_must_use)]
     fn sqrt(self) -> Self;
@@ -85,13 +87,14 @@ pub trait FormatImm {
     fn format_imm(&self) -> String;
 }
 
-impl FormatImm for f32 {
-    fn format_imm(&self) -> String { format!("{self:e}") }
+macro_rules! impl_format_imm_float {
+    ($($t:ty),+) => {
+        $(impl FormatImm for $t {
+            fn format_imm(&self) -> String { format!("{self:e}") }
+        })+
+    };
 }
-
-impl FormatImm for f64 {
-    fn format_imm(&self) -> String { format!("{self:e}") }
-}
+impl_format_imm_float!(f32, f64);
 
 macro_rules! impl_format_imm_int {
     ($($t:ty),+) => {

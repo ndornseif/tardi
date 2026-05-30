@@ -10,12 +10,27 @@ use crate::util::word_from_instructions;
 ///
 /// Each line shows: `address: hex_bytes  mnemonic  [immediate]`
 ///
-/// Bytes that extend past the end of the program are treated as zero.
-pub fn disassemble_program(w: &mut impl std::fmt::Write, program: &[u8]) -> std::fmt::Result {
+/// ### Example:  
+/// ```text
+/// 0x0000: 03             PushIn         
+/// 0x0001: 03             PushIn         
+/// 0x0002: 07             Add            
+/// 0x0003: 06             PopOut         
+/// 0x0004: 02 00 94 bf 44 PushImm         1.532625e3
+/// 0x0009: 18             JmpAprxZero    
+/// 0x000a: 09             Mul            
+/// 0x000b: 0e             Sqrt           
+/// 0x000c: 29             Sqrt           
+/// 0x000d: 01             Halt           
+/// ```
+/// Bytes that extend past the end of the program are treated as zero 
+/// when used for immediates.
+pub fn disassemble_program(w: &mut impl std::fmt::Write, program: &[Instruction]) -> std::fmt::Result {
     let mut itr = program.iter().enumerate();
+    // TODO: This loop only works when Instruction is u8.
     while let Some((i, &byte)) = itr.next() {
         #[allow(clippy::cast_possible_truncation)]
-        let op = OpCode::try_from(byte % OpCode::COUNT as u8)
+        let op = OpCode::try_from(byte % OpCode::COUNT as Instruction)
             .expect("modulo guarantees a valid opcode index");
         match op {
             // TODO: decode jump target from the following immediate bytes.

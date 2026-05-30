@@ -18,3 +18,4 @@ mod util;
 //      Handle immediate and jump targets.
 // Store reason for halting? Allow caller to tell when MAX_RUNTIME exceeded.
 // Consolodate and condense macros for opcode and function defs
+// In doccomments swap `val` for [`val`] where appropriate

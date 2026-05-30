@@ -194,7 +194,8 @@ mod tests {
 
     #[test]
     fn push_imm_reads_correct_bytes() {
-        let program = vec![OpCode::PushImm as u8, 1, 2, 3, 4];
+        // TODO: Adapt this for cases where `MachineWord` is not four bytes long.
+        let program = vec![OpCode::PushImm as Instruction, 1, 2, 3, 4];
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.dispatch();
         assert_eq!(
@@ -211,7 +212,7 @@ mod tests {
 
     #[test]
     fn dispatch_sequence() {
-        let program: Vec<u8> = vec![
+        let program: Vec<Instruction> = vec![
             OpCode::PushIn.into(),
             OpCode::PushOne.into(),
             OpCode::PushZero.into(),
@@ -264,7 +265,7 @@ mod tests {
         ($name:ident, $val_a:expr, $val_b:expr, $rslt:expr, $opcode:expr, $msg:expr) => {
             #[test]
             fn $name() {
-                let program: Vec<u8> = vec![
+                let program: Vec<Instruction> = vec![
                     OpCode::PushIn.into(),
                     OpCode::PushIn.into(),
                     $opcode.into(),
@@ -337,7 +338,7 @@ mod tests {
         ($name:ident, $val_a:expr, $rslt:expr, $opcode:expr, $msg:expr) => {
             #[test]
             fn $name() {
-                let program: Vec<u8> = vec![
+                let program: Vec<Instruction> = vec![
                     OpCode::PushIn.into(),
                     $opcode.into(),
                     OpCode::PopOut.into(),

@@ -7,9 +7,10 @@
 use strum::EnumCount as _;
 use tardi::disassembler::disassemble_program;
 use tardi::instr::OpCode;
+use tardi::consts::Instruction;
 
 fn main() -> std::fmt::Result {
-    let program: Vec<u8> = vec![
+    let program: Vec<Instruction> = vec![
         // Pops two input values, adds them, and writes the result to output.
         OpCode::PushIn.into(),
         OpCode::PushIn.into(),
@@ -23,7 +24,7 @@ fn main() -> std::fmt::Result {
         OpCode::Mul.into(),
         OpCode::Sqrt.into(),
         // Two different byte values that both map to Sqrt via modulo.
-        u8::from(OpCode::Sqrt) + OpCode::COUNT as u8,
+        Instruction::from(OpCode::Sqrt) + OpCode::COUNT as Instruction,
         OpCode::Halt.into(),
     ];
     let mut s = String::new();
