@@ -3,7 +3,7 @@
 use strum::EnumCount as _;
 
 #[allow(unused_imports)] // Only needed when [`MachineWord`] is an integer.
-use crate::consts::{Ceil as _, Floor as _, Round as _, Sqrt as _, Trunc as _, Epsilon as _, IsFinite as _};
+use crate::numeric::{Ceil as _, Epsilon as _, Floor as _, IsFinite as _, Round as _, Sqrt as _, Trunc as _};
 
 use crate::consts::{
     INSTR_PER_ADDRESS, INSTR_PER_WORD, Instruction, MAX_INSTRUCTIONS, MAX_OUTPUT, MAX_STACK,
@@ -317,6 +317,7 @@ mod tests {
     use super::*;
 
     use crate::consts::Address;
+    use crate::numeric::TestLiterals as _;
     use crate::util::{instructions_from_address, instructions_from_word};
 
     /// Build a program with a jump whose target is not yet known, returning the
@@ -608,29 +609,29 @@ mod tests {
     );
     test_one_operand_opcode!(
         round_opcode,
-        5.49,
-        5,
+        MachineWord::ROUND_INPUT,
+        MachineWord::ROUND_EXPECTED,
         OpCode::Round,
         "rounding function did not return expected value"
     );
     test_one_operand_opcode!(
         trunc_opcode,
-        5.99,
-        5,
+        MachineWord::TRUNC_INPUT,
+        MachineWord::TRUNC_EXPECTED,
         OpCode::Trunc,
         "truncation function did not return expected value"
     );
     test_one_operand_opcode!(
         ceil_opcode,
-        5.01,
-        6,
+        MachineWord::CEIL_INPUT,
+        MachineWord::CEIL_EXPECTED,
         OpCode::Ceil,
         "ceiling function did not return expected value"
     );
     test_one_operand_opcode!(
         floor_opcode,
-        -5.01,
-        -6,
+        MachineWord::FLOOR_INPUT,
+        MachineWord::FLOOR_EXPECTED,
         OpCode::Floor,
         "floor function did not return expected value"
     );

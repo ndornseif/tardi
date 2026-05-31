@@ -10,6 +10,9 @@ keywords = ["virtualization", "interpreter", "vm"]
 repository = "https://github.com/ndornseif/tardi"
 
 
+[features]
+word-i32 = []
+
 [dependencies]
 num_enum = "0.7.6"
 strum = { version = "0.28.0", features = ["derive"] }
@@ -30,9 +33,9 @@ variant_size_differences = "warn"
 ambiguous_glob_imports = "warn"
 
 [lints.clippy]
-pedantic = "warn" 
+pedantic = "warn"
 if_not_else = "warn"
-cargo = "warn" 
+cargo = "warn"
 panic_in_result_fn = "warn"
 needless_collect = "warn"
 redundant_clone = "warn"

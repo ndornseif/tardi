@@ -20,5 +20,7 @@ The stack size is set by the `MAX_STACK` constant, the data type it contains by 
 
 ## The disassembler
 
+## Fuzzing
+
 ## License
 This crate may be licensed under the [GNU Lesser General Public License, version 2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html#SEC1).

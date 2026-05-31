@@ -2,9 +2,8 @@
 
 use strum::EnumCount as _;
 
-use crate::consts::{
-    FormatImm as _, INSTR_PER_ADDRESS, INSTR_PER_WORD, INSTRUCTION_SIZE, Instruction,
-};
+use crate::consts::{INSTR_PER_ADDRESS, INSTR_PER_WORD, INSTRUCTION_SIZE, Instruction};
+use crate::numeric::FormatImm as _;
 use crate::instr::OpCode;
 use crate::util::{address_from_instructions, word_from_instructions};
 

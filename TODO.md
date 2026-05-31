@@ -4,7 +4,7 @@
 
 - [ ] Decide on endianness and whether to use `bytemuck` in `util.rs` for the
       transmute-based converter functions.
-- [ ] Fix tests that fail when `MachineWord` is an integer type: `floor`, `ceil`, etc.
+- [x] Fix tests that fail when `MachineWord` is an integer type: `floor`, `ceil`, etc.
 - [ ] Implement `JmpTos` — the remaining jump instruction missing from the interpreter.
 - [ ] Add tests for the unimplemented jump opcodes: `JmpAprxZero`, `JmpPos`, `JmpFin`, `JmpTos`.
 - [ ] Replace `TryFromPrimitive` on `OpCode` with a custom cast that respects the modulo
@@ -26,6 +26,6 @@
 - [ ] In doc comments, replace bare `` `val` `` with `[`val`]` where the type is in scope.
 - [ ] Rewrite assert failure messages in a consistent tense and tone.
       Not needed where the test has a single assert and the test name already describes it.
-- [ ] Set up fuzzing.
+- [ ] Fuzz the `i32` `MachineWord` crate feature.
 - [ ] Spell check doc-comments.
 - [ ] Introduce examples in public API functions.
