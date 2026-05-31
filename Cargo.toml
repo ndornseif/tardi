@@ -1,6 +1,6 @@
 [package]
 name = "tardi"
-description = "Tiny VM where every sequence of bytes is a valid program."
+description = "Tiny stack VM where every sequence of bytes is a valid program."
 license = "LGPL-2.1"
 version = "0.1.0"
 edition = "2024"

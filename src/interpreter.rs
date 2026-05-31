@@ -257,7 +257,7 @@ impl Interpreter {
         self.program_counter = self.read_address_immediate();
     }
 
-    //TODO: Macro for all these float implementations
+    //TODO: Macro for all these jmp implementations
     fn op_jmp_zero(&mut self) {
         let addr = self.read_address_immediate();
         #[allow(clippy::float_cmp)]
@@ -268,7 +268,6 @@ impl Interpreter {
         }
     }
 
-    #[allow(clippy::cast_precision_loss)]
     fn op_jmp_aprx_zero(&mut self) {
         let addr = self.read_address_immediate();
         if self.stack.peek().abs() <= (MachineWord::EPSILON * mw!(10)) {
@@ -485,7 +484,7 @@ mod tests {
         assert_eq!(
             data[0],
             int.stack.peek(),
-            "PushIn should push the input value"
+            "`PushIn` did not push the input value"
         );
         int.dispatch(); // PushOne
         assert_eq!(mw!(1), int.stack.peek(), "PushOne did not push one");
@@ -493,7 +492,7 @@ mod tests {
         assert_eq!(
             MachineWord::default(),
             int.stack.peek(),
-            "PushZero should push 0"
+            "`PushZero` did not push 0"
         );
         int.dispatch(); // Add: 0 + 1
         assert_eq!(mw!(1), int.stack.peek(), "add(0, 1) did not give one");

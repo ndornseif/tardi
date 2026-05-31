@@ -6,6 +6,8 @@
 /// This means that arbitrarily many elements can be pushed,
 /// but only the last `N` elements can be popped back off.
 /// Trying to pop from an empty stack will return `T::default()`.
+/// Since `N` is used extensivley in modulo division choosing a power of
+/// two will cause performance improvements.
 #[derive(Debug, Clone)]
 pub struct Stack<T, const N: usize> {
     values: [T; N],

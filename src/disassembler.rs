@@ -12,7 +12,8 @@ use crate::util::{address_from_instructions, word_from_instructions};
 ///
 /// Each line shows: `address: hex_bytes  mnemonic  [value]`
 ///
-/// Immediate [`MachineWord`](crate::consts::MachineWord) values are shown in scientific notation.
+/// Immediate [`MachineWord`](crate::consts::MachineWord) values are shown in scientific notation
+/// when they are floats.
 /// Jump targets are shown as zero-padded hex addresses.
 /// Bytes extending past the end of the program are treated as zero.
 ///
