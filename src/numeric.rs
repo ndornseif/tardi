@@ -67,7 +67,7 @@ pub trait Epsilon {
 /// Whether a value is finite. Always `true` for integer types.
 #[allow(dead_code)]
 pub trait IsFinite {
-   #[allow(clippy::wrong_self_convention)]
+    #[allow(clippy::wrong_self_convention)]
     fn is_finite(self) -> bool;
 }
 

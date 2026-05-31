@@ -3,7 +3,9 @@
 use strum::EnumCount as _;
 
 #[allow(unused_imports)] // Only needed when [`MachineWord`] is an integer.
-use crate::numeric::{Ceil as _, Epsilon as _, Floor as _, IsFinite as _, Round as _, Sqrt as _, Trunc as _};
+use crate::numeric::{
+    Ceil as _, Epsilon as _, Floor as _, IsFinite as _, Round as _, Sqrt as _, Trunc as _,
+};
 
 use crate::consts::{
     INSTR_PER_ADDRESS, INSTR_PER_WORD, Instruction, MAX_INSTRUCTIONS, MAX_OUTPUT, MAX_STACK,
@@ -425,45 +427,53 @@ mod tests {
         );
     }
 
-    #[test]
-    fn jmp_zero_not_taken() {
-        // TOS is one, so `JmpZero` should not be taken.
-        // Add runs, output = [1+1] = [2].
-        let mut program: Vec<Instruction> = vec![OpCode::PushOne.into(), OpCode::PushOne.into()];
-        let jmp_offset = push_jmp(&mut program, OpCode::JmpZero);
-        program.push(OpCode::Add.into());
-        let pop_pos = program.len();
-        program.extend_from_slice(&[OpCode::PopOut.into(), OpCode::Halt.into()]);
-        patch_jmp(&mut program, jmp_offset, pop_pos);
+    macro_rules! test_conditional_jump {
+        ($name_taken:ident, $name_skipped:ident, $val_taken:expr, $val_skipped:expr, $opcode:expr) => {
+            #[test]
+            fn $name_taken() {
+                // If jump is not taken the data value will have been increased by one when it is output.
+                let mut program: Vec<Instruction> = vec![OpCode::PushIn.into()];
+                let jmp_offset = push_jmp(&mut program, $opcode);
+                // jumped over if jump taken
+                program.push(OpCode::PushOne.into());
+                program.push(OpCode::Add.into());
 
-        let mut int = Interpreter::new_from_program(program, vec![]);
-        int.execute();
-        assert_eq!(
-            vec![mw!(2)],
-            int.output(),
-            "JmpZero did jump when TOS is non-zero"
-        );
+                let pop_pos = program.len();
+                program.extend_from_slice(&[OpCode::PopOut.into(), OpCode::Halt.into()]);
+                patch_jmp(&mut program, jmp_offset, pop_pos);
+                let mut int = Interpreter::new_from_program(program, vec![mw!($val_taken)]);
+                int.execute();
+                assert_eq!(vec![mw!($val_taken)], int.output(),);
+            }
+
+            #[test]
+            fn $name_skipped() {
+                let mut program: Vec<Instruction> = vec![OpCode::PushIn.into()];
+                let jmp_offset = push_jmp(&mut program, $opcode);
+                // jumped over if jump taken
+                program.push(OpCode::PushOne.into());
+                program.push(OpCode::Add.into());
+
+                let pop_pos = program.len();
+                program.extend_from_slice(&[OpCode::PopOut.into(), OpCode::Halt.into()]);
+                patch_jmp(&mut program, jmp_offset, pop_pos);
+                let mut int = Interpreter::new_from_program(program, vec![mw!($val_skipped)]);
+                int.execute();
+                assert_eq!(vec![mw!($val_skipped) + mw!(1)], int.output(),);
+            }
+        };
     }
 
-    #[test]
-    fn jmp_zero_taken() {
-        // TOS is zero, `JmpZero` jumps past `PushOne`.
-        // TOS remains zero.
-        let mut program: Vec<Instruction> = vec![OpCode::PushZero.into()];
-        let jmp_offset = push_jmp(&mut program, OpCode::JmpZero);
-        program.push(OpCode::PushOne.into()); // dead code: jumped over
-        let pop_pos = program.len();
-        program.extend_from_slice(&[OpCode::PopOut.into(), OpCode::Halt.into()]);
-        patch_jmp(&mut program, jmp_offset, pop_pos);
+    test_conditional_jump!(jmp_zero_taken, jmp_zero_not_taken, 0, 1, OpCode::JmpZero);
+    test_conditional_jump!(
+        jmp_aprx_zero_taken,
+        jmp_aprx_zero_not_taken,
+        MachineWord::EPSILON,
+        1,
+        OpCode::JmpAprxZero
+    );
+    test_conditional_jump!(jmp_pos_taken, jmp_pos_not_taken, 1, 0, OpCode::JmpPos);
 
-        let mut int = Interpreter::new_from_program(program, vec![]);
-        int.execute();
-        assert_eq!(
-            vec![mw!(0)],
-            int.output(),
-            "JmpZero did not jump when TOS is zero"
-        );
-    }
     #[test]
     fn dispatch_sequence() {
         let program: Vec<Instruction> = vec![
