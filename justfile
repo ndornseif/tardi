@@ -1,9 +1,11 @@
 test-all:
+  @echo "============= Testing with default crate features ============="
   cargo test
+  @echo "============= Testing with word-i32 crate feature ============="
   cargo test --features word-i32
 
 examples:
-  cargo run --example disassembly
+  cargo run --example sqrt_stream
 
 lint:
   cargo clippy

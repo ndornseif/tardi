@@ -24,7 +24,8 @@
 - [ ] After feature flags are finalized optimize code using `#[cfg]`.
       Lots of integer operations can be simplified and speed up.
       The use of traits can be reduced. Almost all code in `numeric.rs` removed.
-- [ ] Implement additional ways to process interpreter output than `.to_vec()`.
+- [ ] Implement additional ways to process interpreter output than `.output()`?
+- [ ] Reverse direction of output when returned from interpreter?
 
 ## Low
 
