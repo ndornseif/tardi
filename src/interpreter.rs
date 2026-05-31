@@ -401,11 +401,7 @@ mod tests {
         let program = vec![OpCode::PushImm as Instruction];
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.dispatch();
-        assert_eq!(
-            MachineWord::default(),
-            int.stack.peek(),
-            "out-of-bounds immediate bytes not treated as zero"
-        );
+        assert_eq!(MachineWord::default(), int.stack.peek(),);
     }
 
     #[test]
@@ -420,11 +416,7 @@ mod tests {
 
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.execute();
-        assert_eq!(
-            vec![mw!(1)],
-            int.output(),
-            "jmp did not skip add instruction"
-        );
+        assert_eq!(vec![mw!(1)], int.output(),);
     }
 
     macro_rules! test_conditional_jump {
@@ -463,7 +455,6 @@ mod tests {
             }
         };
     }
-
     test_conditional_jump!(jmp_zero_taken, jmp_zero_not_taken, 0, 1, OpCode::JmpZero);
     test_conditional_jump!(
         jmp_aprx_zero_taken,
@@ -526,7 +517,7 @@ mod tests {
     }
 
     macro_rules! test_two_operand_opcode {
-        ($name:ident, $val_a:expr, $val_b:expr, $rslt:expr, $opcode:expr, $msg:expr) => {
+        ($name:ident, $val_a:expr, $val_b:expr, $rslt:expr, $opcode:expr) => {
             #[test]
             fn $name() {
                 let program: Vec<Instruction> = vec![
@@ -538,127 +529,57 @@ mod tests {
                 let data: Vec<MachineWord> = vec![mw!($val_a), mw!($val_b)];
                 let mut int = Interpreter::new_from_program(program, data.clone());
                 int.execute();
-                assert_eq!(vec![mw!($rslt)], int.output(), $msg);
+                assert_eq!(vec![mw!($rslt)], int.output());
             }
         };
     }
-    test_two_operand_opcode!(
-        add_opcode,
-        5,
-        6,
-        11,
-        OpCode::Add,
-        "addition did not return expected sum"
-    );
-    test_two_operand_opcode!(
-        sub_opcode,
-        5,
-        6,
-        1,
-        OpCode::Sub,
-        "subtraction did not return expected difference"
-    );
-    test_two_operand_opcode!(
-        mul_opcode,
-        5,
-        6,
-        30,
-        OpCode::Mul,
-        "multiplication did not return expected product"
-    );
-    test_two_operand_opcode!(
-        div_opcode,
-        5,
-        30,
-        6,
-        OpCode::Div,
-        "division did not return expected quotiend"
-    );
-    test_two_operand_opcode!(
-        mod_div_opcode,
-        7,
-        30,
-        2,
-        OpCode::ModDiv,
-        "modulo division did not return expected remainder"
-    );
-    test_two_operand_opcode!(
-        min_opcode,
-        5,
-        6,
-        5,
-        OpCode::Min,
-        "minimum function did not return expected result"
-    );
-    test_two_operand_opcode!(
-        max_opcode,
-        5,
-        6,
-        6,
-        OpCode::Max,
-        "maximum function did not return expected result"
-    );
+    test_two_operand_opcode!(add_opcode, 5, 6, 11, OpCode::Add);
+    test_two_operand_opcode!(sub_opcode, 5, 6, 1, OpCode::Sub);
+    test_two_operand_opcode!(mul_opcode, 5, 6, 30, OpCode::Mul);
+    test_two_operand_opcode!(div_opcode, 5, 30, 6, OpCode::Div);
+    test_two_operand_opcode!(mod_div_opcode, 7, 30, 2, OpCode::ModDiv);
+    test_two_operand_opcode!(min_opcode, 5, 6, 5, OpCode::Min);
+    test_two_operand_opcode!(max_opcode, 5, 6, 6, OpCode::Max);
+
     macro_rules! test_one_operand_opcode {
-        ($name:ident, $val_a:expr, $rslt:expr, $opcode:expr, $msg:expr) => {
+        ($name:ident, $val_a:expr, $rslt:expr, $opcode:expr) => {
             #[test]
             fn $name() {
                 let program: Vec<Instruction> =
                     vec![OpCode::PushIn.into(), $opcode.into(), OpCode::PopOut.into()];
                 let mut int = Interpreter::new_from_program(program, vec![mw!($val_a)]);
                 int.execute();
-                assert_eq!(vec![mw!($rslt)], int.output(), $msg);
+                assert_eq!(vec![mw!($rslt)], int.output());
             }
         };
     }
-    test_one_operand_opcode!(
-        sqrt_opcode,
-        16,
-        4,
-        OpCode::Sqrt,
-        "square root did not return expected root"
-    );
+    test_one_operand_opcode!(sqrt_opcode, 16, 4, OpCode::Sqrt);
     test_one_operand_opcode!(
         round_opcode,
         MachineWord::ROUND_INPUT,
         MachineWord::ROUND_EXPECTED,
-        OpCode::Round,
-        "rounding function did not return expected value"
+        OpCode::Round
     );
     test_one_operand_opcode!(
         trunc_opcode,
         MachineWord::TRUNC_INPUT,
         MachineWord::TRUNC_EXPECTED,
-        OpCode::Trunc,
-        "truncation function did not return expected value"
+        OpCode::Trunc
     );
     test_one_operand_opcode!(
         ceil_opcode,
         MachineWord::CEIL_INPUT,
         MachineWord::CEIL_EXPECTED,
-        OpCode::Ceil,
-        "ceiling function did not return expected value"
+        OpCode::Ceil
     );
     test_one_operand_opcode!(
         floor_opcode,
         MachineWord::FLOOR_INPUT,
         MachineWord::FLOOR_EXPECTED,
-        OpCode::Floor,
-        "floor function did not return expected value"
+        OpCode::Floor
     );
-    test_one_operand_opcode!(
-        neg_opcode,
-        6,
-        -6,
-        OpCode::Neg,
-        "negation function did not return expected value"
-    );
-    test_one_operand_opcode!(
-        abs_opcode,
-        -4,
-        4,
-        OpCode::Abs,
-        "abs function did not return expected value"
-    );
+    test_one_operand_opcode!(neg_opcode, 6, -6, OpCode::Neg);
+    test_one_operand_opcode!(abs_opcode, -4, 4, OpCode::Abs);
 
     #[test]
     fn swap_opcode() {
@@ -671,7 +592,7 @@ mod tests {
         ];
         let mut int = Interpreter::new_from_program(program, vec![mw!(3), mw!(7)]);
         int.execute();
-        assert_eq!(vec![mw!(7)], int.output(), "swap did not reorder elements");
+        assert_eq!(vec![mw!(7)], int.output());
     }
 
     #[test]
@@ -685,11 +606,7 @@ mod tests {
         ];
         let mut int = Interpreter::new_from_program(program, vec![mw!(3), mw!(7)]);
         int.execute();
-        assert_eq!(
-            vec![mw!(7)],
-            int.output(),
-            "remove did not drop the top stack element"
-        );
+        assert_eq!(vec![mw!(7)], int.output(),);
     }
 
     #[test]
@@ -703,13 +620,9 @@ mod tests {
         ];
         let mut int = Interpreter::new_from_program(program, vec![mw!(5)]);
         int.execute();
-        assert_eq!(
-            vec![mw!(5), mw!(5)],
-            int.output(),
-            "Dup did not produce two copies of the top stack element"
-        );
+        assert_eq!(vec![mw!(5), mw!(5)], int.output(),);
     }
-    
+
     // This exists to make it abvious on the test output that the `i32` crate
     // feature was enabled when the tests where ran.
     #[cfg(feature = "word-i32")]
