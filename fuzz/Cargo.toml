@@ -14,8 +14,8 @@ libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
 path = ".."
 
 [[bin]]
-name = "fuzz_target_1"
-path = "fuzz_targets/fuzz_target_1.rs"
+name = "fuzz_target_f32"
+path = "fuzz_targets/fuzz_target_f32.rs"
 test = false
 doc = false
 bench = false
