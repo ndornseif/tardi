@@ -12,7 +12,7 @@
 
 ## Medium
 
-- [ ] Consolidate jump implementations using macros.
+- [x] Consolidate jump implementations using macros.
 - [ ] Add functionality to convert an arbitrary program into a canonical form
       (e.g. replace out-of-range bytes with their in-range equivalents).
 - [ ] Write a more complex disassembler showcase example.
@@ -27,7 +27,6 @@
 
 ## Low
 
-- [ ] Consolidate and condense the macros used for opcode handler definitions.
 - [ ] Move `use` statements to the `#[cfg(test)]` module where they are only needed in tests.
 - [ ] Fix scattered smaller TODOs remaining in the source.
 - [ ] In doc comments, replace bare `` `val` `` with `[`val`]` where the type is in scope.

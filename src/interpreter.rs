@@ -121,6 +121,21 @@ macro_rules! op_two_operand {
     };
 }
 
+macro_rules! op_conditional_jump {
+    ($name:ident, |$s:ident| $condition:expr) => {
+        fn $name(&mut self) {
+            let addr = self.read_address_immediate();
+            let $s = &*self;
+            #[allow(clippy::float_cmp)]
+            if $condition {
+                self.program_counter = addr;
+            } else {
+                self.program_counter += INSTR_PER_ADDRESS;
+            }
+        }
+    };
+}
+
 impl Interpreter {
     /// Initialize a new interpreter with a [`Vec`] of [`Instruction`] bytes,
     /// which encode [`OpCode`]s and their immediate values.
@@ -260,50 +275,18 @@ impl Interpreter {
         self.program_counter = self.read_address_immediate();
     }
 
-    //TODO: Macro for all these jmp implementations
-    fn op_jmp_zero(&mut self) {
-        let addr = self.read_address_immediate();
-        #[allow(clippy::float_cmp)]
-        if self.stack.peek() == MachineWord::default() {
-            self.program_counter = addr;
-        } else {
-            self.program_counter += INSTR_PER_ADDRESS;
-        }
-    }
-
-    fn op_jmp_aprx_zero(&mut self) {
-        let addr = self.read_address_immediate();
-        if self.stack.peek().abs() <= (MachineWord::EPSILON * mw!(10)) {
-            self.program_counter = addr;
-        } else {
-            self.program_counter += INSTR_PER_ADDRESS;
-        }
-    }
-
-    fn op_jmp_pos(&mut self) {
-        let addr = self.read_address_immediate();
-        if self.stack.peek() > MachineWord::default() {
-            self.program_counter = addr;
-        } else {
-            self.program_counter += INSTR_PER_ADDRESS;
-        }
-    }
-
-    fn op_jmp_fin(&mut self) {
-        let addr = self.read_address_immediate();
-        if self.stack.peek().is_finite() {
-            self.program_counter = addr;
-        } else {
-            self.program_counter += INSTR_PER_ADDRESS;
-        }
-    }
-
     #[allow(clippy::cast_sign_loss)]
     #[allow(clippy::cast_possible_truncation)]
     fn op_jmp_tos(&mut self) {
         let addr = self.stack.pop().abs();
         self.program_counter = (addr as usize) % self.instructions.len();
     }
+
+    op_conditional_jump!(op_jmp_zero, |s| s.stack.peek() == MachineWord::default());
+    op_conditional_jump!(op_jmp_aprx_zero, |s| s.stack.peek().abs()
+        <= (MachineWord::EPSILON * mw!(10)));
+    op_conditional_jump!(op_jmp_pos, |s| s.stack.peek() > MachineWord::default());
+    op_conditional_jump!(op_jmp_fin, |s| s.stack.peek().is_finite());
 
     op_two_operand!(op_add, +);
     op_two_operand!(op_sub, -);
