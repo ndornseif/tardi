@@ -1,7 +1,5 @@
 //! Disassemble bytecode
 
-use strum::EnumCount as _;
-
 use crate::consts::{INSTR_PER_ADDRESS, INSTR_PER_WORD, INSTRUCTION_SIZE, Instruction};
 use crate::instr::OpCode;
 use crate::numeric::FormatImm as _;
@@ -37,9 +35,7 @@ pub fn disassemble_program(
     const WORD_DIGITS: usize = INSTRUCTION_SIZE * 2;
     let mut itr = program.iter().enumerate();
     while let Some((i, &byte)) = itr.next() {
-        #[allow(clippy::cast_possible_truncation)]
-        let op = OpCode::try_from(byte % OpCode::COUNT as Instruction)
-            .expect("modulo guarantees a valid opcode index");
+        let op = OpCode::from(byte);
         match op {
             OpCode::PushImm => {
                 let mut imm_parts = [Instruction::default(); INSTR_PER_WORD];

@@ -7,7 +7,7 @@
 - [x] Fix tests that fail when `MachineWord` is an integer type: `floor`, `ceil`, etc.
 - [x] Implement `JmpTos` — the remaining jump instruction missing from the interpreter.
 - [x] Add tests for the unimplemented jump opcodes: `JmpAprxZero`, `JmpPos`, `JmpFin`, `JmpTos`.
-- [ ] Replace `TryFromPrimitive` on `OpCode` with a custom cast that respects the modulo
+- [x] Replace `TryFromPrimitive` on `OpCode` with a custom cast that respects the modulo
       convention, so any `u8` can be converted to an `OpCode` without a `Result`.
 
 ## Medium
@@ -24,6 +24,7 @@
 - [ ] After feature flags are finalized optimize code using `#[cfg]`.
       Lots of integer operations can be simplified and speed up.
       The use of traits can be reduced. Almost all code in `numeric.rs` removed.
+- [ ] Implement additional ways to process interpreter output than `.to_vec()`.
 
 ## Low
 

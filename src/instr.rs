@@ -5,7 +5,6 @@
 //! All jumps are executed modulo the program size, it is impossible to jump out of the program.
 //! A jump destination address is always express as an unsigned integer type defined by [`Address`].
 
-use num_enum::{IntoPrimitive, TryFromPrimitive};
 use strum::{Display, EnumCount};
 
 #[allow(unused_imports)]
@@ -13,9 +12,7 @@ use crate::consts::{Address, MachineWord};
 
 /// Represents a possible bytecode instruction for the interpreter.
 #[repr(u8)]
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Default, TryFromPrimitive, IntoPrimitive, EnumCount, Display,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, EnumCount, Display)]
 pub enum OpCode {
     /// Does nothing.
     #[default]
@@ -93,9 +90,26 @@ pub enum OpCode {
     JmpFin,
     /// Jump to address as specified by the absolute value of TOS.
     /// The value is converted to [`usize`] using Rust's `as` cast.
-    /// This follows rusts conventions:  
+    /// This follows rusts conventions:
     ///     - Very large values and inf are clamped to `usize::MAX`.
     ///     - NaN becomes zero.
     /// This instruction does pop the value from the top of the stack and drops it.
     JmpTos,
+}
+
+impl From<u8> for OpCode {
+    fn from(v: u8) -> Self {
+        // SAFETY: All discriminants are consecutive from 0 to COUNT-1 (no explicit values),
+        // so v % COUNT is always a valid repr(u8) discriminant.
+        #[allow(clippy::cast_possible_truncation)]
+        unsafe {
+            std::mem::transmute(v % Self::COUNT as u8)
+        }
+    }
+}
+
+impl From<OpCode> for u8 {
+    fn from(op: OpCode) -> Self {
+        op as Self
+    }
 }
