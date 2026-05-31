@@ -12,8 +12,6 @@ adapted to some other execution platform or converted into the `canonical` versi
 ## The Stack
 The stack size is set by the `MAX_STACK` constant, the data type it contains by the `MachineWord` type.
 
-## Type agnostic behaviours
-
 ## ~~Quirks~~ Notable properties
 
 ## Instructions
@@ -21,6 +19,9 @@ The stack size is set by the `MAX_STACK` constant, the data type it contains by 
 ## The disassembler
 
 ## Fuzzing
+
+## just
+This project uses [just](https://github.com/casey/just) to manage testing and fuzzing with different sets of crate features enabled. Use `just test-all` to test all relevant crate features.
 
 ## License
 This crate may be licensed under the [GNU Lesser General Public License, version 2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html#SEC1).
