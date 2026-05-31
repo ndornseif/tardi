@@ -38,7 +38,7 @@ fn main() -> std::fmt::Result {
     program.push(OpCode::Halt.into());
 
     // Byte 0x1f = 31 also maps to Halt (31 % COUNT = 1 = Halt).
-    program.push(u8::from(OpCode::Halt) + OpCode::COUNT as u8);
+    program.push(Instruction::from(OpCode::Halt) + OpCode::COUNT as Instruction);
 
     let mut s = String::new();
     disassemble_program(&mut s, &program)?;

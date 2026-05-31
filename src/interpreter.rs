@@ -709,4 +709,10 @@ mod tests {
             "Dup did not produce two copies of the top stack element"
         );
     }
+    
+    // This exists to make it abvious on the test output that the `i32` crate
+    // feature was enabled when the tests where ran.
+    #[cfg(feature = "word-i32")]
+    #[test]
+    fn i32_tests_ran() {}
 }
