@@ -1,6 +1,7 @@
 //! General utility functions
 
 use crate::consts::{Address, INSTR_PER_ADDRESS, INSTR_PER_WORD, Instruction, MachineWord};
+use crate::instr::OpCode;
 
 /// Turn a set of [`Instruction`]s into its representaion as an [`MachineWord`].
 ///
@@ -40,4 +41,24 @@ pub fn instructions_from_address(addr: Address) -> [Instruction; INSTR_PER_ADDRE
     // SAFETY:
     // See: [`word_from_instruction`].
     unsafe { std::mem::transmute(addr) }
+}
+
+/// Append a jump [`OpCode`] with a placeholder address to `program`.
+///
+/// Returns the byte offset of the address slot so it can be filled in
+/// later with [`patch_jmp`] once the target address is known.
+pub fn push_jmp(program: &mut Vec<Instruction>, opcode: OpCode) -> usize {
+    program.push(opcode.into());
+    let offset = program.len();
+    program.extend_from_slice(&instructions_from_address(0));
+    offset
+}
+
+/// Overwrite the address slot at `offset` in `program` with `target`.
+///
+/// `offset` must be the value returned by a previous call to [`push_jmp`].
+#[allow(clippy::cast_possible_truncation)]
+pub fn patch_jmp(program: &mut [Instruction], offset: usize, target: usize) {
+    program[offset..offset + INSTR_PER_ADDRESS]
+        .copy_from_slice(&instructions_from_address(target as Address));
 }

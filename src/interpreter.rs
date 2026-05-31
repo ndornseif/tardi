@@ -309,24 +309,8 @@ impl Interpreter {
 mod tests {
     use super::*;
 
-    use crate::consts::Address;
     use crate::numeric::TestLiterals as _;
-    use crate::util::{instructions_from_address, instructions_from_word};
-
-    /// Build a program with a jump whose target is not yet known, returning the
-    /// offset in the program where the address bytes should be patched.
-    fn push_jmp(program: &mut Vec<Instruction>, opcode: OpCode) -> usize {
-        program.push(opcode.into());
-        let offset = program.len();
-        program.extend_from_slice(&instructions_from_address(0));
-        offset
-    }
-
-    /// Patch a previously reserved jump address slot with the given target.
-    fn patch_jmp(program: &mut Vec<Instruction>, offset: usize, target: usize) {
-        program[offset..offset + INSTR_PER_ADDRESS]
-            .copy_from_slice(&instructions_from_address(target as Address));
-    }
+    use crate::util::{instructions_from_word, patch_jmp, push_jmp};
 
     #[test]
     fn halt_on_halt_instruction() {
