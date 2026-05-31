@@ -1,24 +1,31 @@
 # TODO
 
-## High — correctness and completeness
+## High
 
 - [ ] Decide on endianness and whether to use `bytemuck` in `util.rs` for the
       transmute-based converter functions.
 - [x] Fix tests that fail when `MachineWord` is an integer type: `floor`, `ceil`, etc.
-- [ ] Implement `JmpTos` — the remaining jump instruction missing from the interpreter.
-- [ ] Add tests for the unimplemented jump opcodes: `JmpAprxZero`, `JmpPos`, `JmpFin`, `JmpTos`.
+- [x] Implement `JmpTos` — the remaining jump instruction missing from the interpreter.
+- [x] Add tests for the unimplemented jump opcodes: `JmpAprxZero`, `JmpPos`, `JmpFin`, `JmpTos`.
 - [ ] Replace `TryFromPrimitive` on `OpCode` with a custom cast that respects the modulo
       convention, so any `u8` can be converted to an `OpCode` without a `Result`.
 
-## Medium — features
+## Medium
 
-- [ ] Run the test suite with `MachineWord` set to both a float and an integer type to
-      catch regressions when the type is changed.
+- [ ] Consolidate jump implementations using macros.
 - [ ] Add functionality to convert an arbitrary program into a canonical form
       (e.g. replace out-of-range bytes with their in-range equivalents).
 - [ ] Write a more complex disassembler showcase example.
+- [ ] Decide on feature flags for using other types as `MachineWord`.
+      Desirable: `i8`, `i16`, `i32`, `i64` and `f64`.
+      Potentially have a `int` and `float` flag that set `MachineWord` to `i32` and `f32` 
+      by default. Write code in a way that allows `i8` - `i64` with one flag 
+      and `f32`, `f64` with other flag.
+- [ ] After feature flags are finalized optimize code using `#[cfg]`.
+      Lots of integer operations can be simplified and speed up.
+      The use of traits can be reduced. Almost all code in `numeric.rs` removed.
 
-## Low — cleanup and polish
+## Low
 
 - [ ] Consolidate and condense the macros used for opcode handler definitions.
 - [ ] Move `use` statements to the `#[cfg(test)]` module where they are only needed in tests.

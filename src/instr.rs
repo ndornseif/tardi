@@ -91,11 +91,11 @@ pub enum OpCode {
     /// Does not pop the value.
     /// Will always jump if [`MachineWord`] is an integer.
     JmpFin,
-    /// Jump to address as specified by top of stack.
+    /// Jump to address as specified by the absolute value of TOS.
     /// The value is converted to [`usize`] using Rust's `as` cast.
-    /// If the conversion to [`usize`] is impossible because the float is not finite
-    /// the jump will be skipped.
-    /// This instruction does pop the value from the top of the stack and drops it,
-    /// even if the jump was skipped.
+    /// This follows rusts conventions:  
+    ///     - Very large values and inf are clamped to `usize::MAX`.
+    ///     - NaN becomes zero.
+    /// This instruction does pop the value from the top of the stack and drops it.
     JmpTos,
 }

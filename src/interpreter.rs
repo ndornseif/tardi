@@ -57,6 +57,7 @@ static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
     JmpAprxZero => op_jmp_aprx_zero,
     JmpPos      => op_jmp_pos,
     JmpFin      => op_jmp_fin,
+    JmpTos      => op_jmp_tos,
 };
 
 /// Specifies the reason why Interpreter was halted.
@@ -297,6 +298,13 @@ impl Interpreter {
         }
     }
 
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation)]
+    fn op_jmp_tos(&mut self) {
+        let addr = self.stack.pop().abs();
+        self.program_counter = (addr as usize) % self.instructions.len();
+    }
+
     op_two_operand!(op_add, +);
     op_two_operand!(op_sub, -);
     op_two_operand!(op_mul, *);
@@ -401,7 +409,7 @@ mod tests {
         let program = vec![OpCode::PushImm as Instruction];
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.dispatch();
-        assert_eq!(MachineWord::default(), int.stack.peek(),);
+        assert_eq!(MachineWord::default(), int.stack.peek());
     }
 
     #[test]
@@ -416,7 +424,7 @@ mod tests {
 
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.execute();
-        assert_eq!(vec![mw!(1)], int.output(),);
+        assert_eq!(vec![mw!(1)], int.output());
     }
 
     macro_rules! test_conditional_jump {
@@ -435,11 +443,12 @@ mod tests {
                 patch_jmp(&mut program, jmp_offset, pop_pos);
                 let mut int = Interpreter::new_from_program(program, vec![mw!($val_taken)]);
                 int.execute();
-                assert_eq!(vec![mw!($val_taken)], int.output(),);
+                assert_eq!(vec![mw!($val_taken)], int.output());
             }
 
             #[test]
             fn $name_skipped() {
+                // If jump is taken the data value will be present in the output unaltered.
                 let mut program: Vec<Instruction> = vec![OpCode::PushIn.into()];
                 let jmp_offset = push_jmp(&mut program, $opcode);
                 // jumped over if jump taken
@@ -451,7 +460,7 @@ mod tests {
                 patch_jmp(&mut program, jmp_offset, pop_pos);
                 let mut int = Interpreter::new_from_program(program, vec![mw!($val_skipped)]);
                 int.execute();
-                assert_eq!(vec![mw!($val_skipped) + mw!(1)], int.output(),);
+                assert_eq!(vec![mw!($val_skipped) + mw!(1)], int.output());
             }
         };
     }
@@ -464,6 +473,28 @@ mod tests {
         OpCode::JmpAprxZero
     );
     test_conditional_jump!(jmp_pos_taken, jmp_pos_not_taken, 1, 0, OpCode::JmpPos);
+
+    #[test]
+    fn opcode_jmp_tos() {
+        // We measure the jump distance based on the number of `PushOne`s executed.
+        let program: Vec<Instruction> = vec![
+            OpCode::PushIn.into(),
+            OpCode::JmpTos.into(),
+            OpCode::PushOne.into(),
+            OpCode::PushOne.into(),
+            OpCode::PushOne.into(),
+            OpCode::PushOne.into(),
+            // Note that `Add` becomes effective no-op if only
+            // one value is present on the stack.
+            OpCode::Add.into(),
+            OpCode::Add.into(),
+            OpCode::Add.into(),
+            OpCode::PopOut.into(),
+        ];
+        let mut int = Interpreter::new_from_program(program, vec![mw!(4)]);
+        int.execute();
+        assert_eq!(vec![mw!(2)], int.output());
+    }
 
     #[test]
     fn dispatch_sequence() {
