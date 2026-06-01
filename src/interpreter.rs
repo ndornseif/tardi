@@ -347,7 +347,21 @@ impl Interpreter {
     op_two_operand!(op_add, +);
     op_two_operand!(op_sub, -);
     op_two_operand!(op_mul, *);
+    #[cfg(feature = "int-word")]
+    fn op_div(&mut self) {
+        let b = self.stack.pop();
+        let a = self.stack.pop();
+        self.stack.push(a.checked_div(b).unwrap_or(MachineWord::default()));
+    }
+    #[cfg(not(feature = "int-word"))]
     op_two_operand!(op_div, /);
+    #[cfg(feature = "int-word")]
+    fn op_mod_div(&mut self) {
+        let b = self.stack.pop();
+        let a = self.stack.pop();
+        self.stack.push(a.checked_rem(b).unwrap_or(MachineWord::default()));
+    }
+    #[cfg(not(feature = "int-word"))]
     op_two_operand!(op_mod_div, %);
     op_two_operand!(op_max, max);
     op_two_operand!(op_min, min);

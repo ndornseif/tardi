@@ -41,6 +41,8 @@ pub enum OpCode {
     Mul,
     /// Pop the top two values from the stack and push their quotient.
     /// The second value is divided by the top one.
+    /// If `MachineWord` is an int division by zero returns zero,
+    /// otherwise the float division rules apply.
     Div,
     /// Pop the top two values from the stack and push their minimum.
     Min,
