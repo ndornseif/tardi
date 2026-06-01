@@ -27,80 +27,24 @@ impl_format_imm_int!(i8, i16, i32, i64, i128, isize);
 
 /// Effectively renaming [`isqrt`](i32::isqrt) to `sqrt` for integer types,
 /// allowing [`MachineWord`](crate::consts::MachineWord) to be int or float.
-#[allow(dead_code)]
+/// Not needed for float types since they have an inherent `sqrt` method.
+#[cfg(feature = "int-word")]
 pub trait Sqrt {
     #[allow(clippy::return_self_not_must_use)]
     fn sqrt(self) -> Self;
 }
 
-/// Rounding to nearest integer. Identity function for integer types.
-#[allow(dead_code)]
-pub trait Round {
-    fn round(self) -> Self;
-}
-
-/// Truncation toward zero. Identity function for integer types.
-#[allow(dead_code)]
-pub trait Trunc {
-    fn trunc(self) -> Self;
-}
-
-/// Floor (toward negative infinity). Identity function for integer types.
-#[allow(dead_code)]
-pub trait Floor {
-    fn floor(self) -> Self;
-}
-
-/// Ceiling (toward positive infinity). Identity function for integer types.
-#[allow(dead_code)]
-pub trait Ceil {
-    fn ceil(self) -> Self;
-}
-
-/// Machine epsilon for the type. Zero for integer types.
-#[allow(dead_code)]
-pub trait Epsilon {
-    /// The machine epsilon value.
-    const EPSILON: Self;
-}
-
-/// Whether a value is finite. Always `true` for integer types.
-#[allow(dead_code)]
-pub trait IsFinite {
-    #[allow(clippy::wrong_self_convention)]
-    fn is_finite(self) -> bool;
-}
-
-/// Implement float-only functions for signed integers so they can be used as
-/// [`MachineWord`](crate::consts::MachineWord).
-macro_rules! impl_float_funcs_for_int {
+#[cfg(feature = "int-word")]
+macro_rules! impl_sqrt_for_int {
     ($($t:ty),+) => {
-        $(
-        impl Epsilon for $t {
-            const EPSILON: Self = 0;
-        }
-        impl Sqrt for $t {
+        $(impl Sqrt for $t {
             fn sqrt(self) -> Self { Self::isqrt(self) }
-        }
-        impl Round for $t {
-            fn round(self) -> Self { self }
-        }
-        impl Trunc for $t {
-            fn trunc(self) -> Self { self }
-        }
-        impl Floor for $t {
-            fn floor(self) -> Self { self }
-        }
-        impl Ceil for $t {
-            fn ceil(self) -> Self { self }
-        }
-        impl IsFinite for $t {
-            fn is_finite(self) -> bool { true }
-        }
-        )+
+        })+
     };
 }
-impl_float_funcs_for_int!(i8, i16, i32, i64, i128, isize);
+
+#[cfg(feature = "int-word")]
+impl_sqrt_for_int!(i8, i16, i32, i64, i128, isize);
 
 /// Type appropriate test inputs and expected outputs for opcode test
 /// that have behaviour that depends on the type of [`MachineWord`].

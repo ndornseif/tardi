@@ -26,7 +26,7 @@
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::use_debug)]
 
-#[cfg(not(feature = "word-i32"))]
+#[cfg(not(feature = "int-word"))]
 use tardi::{
     consts::Instruction,
     disassembler::disassemble_program,
@@ -36,7 +36,7 @@ use tardi::{
     util::{instructions_from_word, patch_jmp, push_jmp},
 };
 
-#[cfg(not(feature = "word-i32"))]
+#[cfg(not(feature = "int-word"))]
 fn main() {
     let mut program: Vec<Instruction> = Vec::new();
 
@@ -95,6 +95,7 @@ fn main() {
         mw!(2),
     ];
 
+    println!("Example: sqrt_stream.rs\nPrints fixed-point sqrt of input values.");
     println!("=== Input ===\n{input:?}\n");
 
     let mut s = String::new();
@@ -115,7 +116,7 @@ fn main() {
     println!("{:?}", interp.output());
 }
 
-#[cfg(feature = "word-i32")]
+#[cfg(feature = "int-word")]
 fn main() {
     eprintln!("This example does not work with integer machine words.")
 }

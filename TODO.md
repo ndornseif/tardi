@@ -12,20 +12,17 @@
 
 ## Medium
 
+- [ ] Get README into a usable state.
 - [x] Consolidate jump implementations using macros.
 - [ ] Add functionality to convert an arbitrary program into a canonical form
       (e.g. replace out-of-range bytes with their in-range equivalents).
-- [ ] Write a more complex disassembler showcase example.
-- [ ] Decide on feature flags for using other types as `MachineWord`.
-      Desirable: `i8`, `i16`, `i32`, `i64` and `f64`.
-      Potentially have a `int` and `float` flag that set `MachineWord` to `i32` and `f32` 
-      by default. Write code in a way that allows `i8` - `i64` with one flag 
-      and `f32`, `f64` with other flag.
-- [ ] After feature flags are finalized optimize code using `#[cfg]`.
-      Lots of integer operations can be simplified and speed up.
-      The use of traits can be reduced. Almost all code in `numeric.rs` removed.
+- [x] Write a more complex disassembler showcase example.
+- [ ] Clean up dead code in numeric.rs now that int/float switch flag exists.
 - [ ] Implement additional ways to process interpreter output than `.output()`?
 - [ ] Reverse direction of output when returned from interpreter?
+- [x] Update disassembler to output addresses with the number of hex digits dictated by 
+      their bit width.
+- [ ] Make use of feature flags in disassembler to reduce code duplication.
 
 ## Low
 
@@ -37,3 +34,4 @@
 - [ ] Fuzz the `i32` `MachineWord` crate feature.
 - [ ] Spell check doc-comments.
 - [ ] Introduce examples in public API functions.
+- [x] Make interpreter cut program short if it is longer than `Address::MAX`.

@@ -1,6 +1,8 @@
 //! Disassemble bytecode
 
-use crate::consts::{INSTR_PER_ADDRESS, INSTR_PER_WORD, INSTRUCTION_SIZE, Instruction, Address};
+use crate::consts::{
+    ADDRESS_SIZE, Address, INSTR_PER_ADDRESS, INSTR_PER_WORD, INSTRUCTION_SIZE, Instruction,
+};
 use crate::instr::OpCode;
 use crate::numeric::FormatImm as _;
 use crate::util::{address_from_instructions, word_from_instructions};
@@ -33,6 +35,11 @@ pub fn disassemble_program(
     program: &[Instruction],
 ) -> std::fmt::Result {
     const WORD_DIGITS: usize = INSTRUCTION_SIZE * 2;
+    const COL_WIDTH: usize = WORD_DIGITS + 1; // " XX" per byte column
+    // Number of hex digits to encode address, plus to to acoount for 0x prefix.
+    const ADDRESS_DIGITS: usize = ADDRESS_SIZE * 2 + 2;
+    let max_arg_bytes = INSTR_PER_WORD.max(INSTR_PER_ADDRESS);
+
     let mut itr = program.iter().enumerate();
     while let Some((i, &byte)) = itr.next() {
         let op = OpCode::from(byte);
@@ -43,11 +50,12 @@ pub fn disassemble_program(
                     *part = itr.next().map_or(0, |(_, &b)| b);
                 }
                 let imm = word_from_instructions(imm_parts);
-                write!(w, "{i:#08x}: {byte:0WORD_DIGITS$x}")?;
+                write!(w, "{i:#0ADDRESS_DIGITS$x}: {byte:0WORD_DIGITS$x}")?;
                 for p in &imm_parts {
                     write!(w, " {p:0WORD_DIGITS$x}")?;
                 }
-                writeln!(w, " {op:15} {}", imm.format_imm())?;
+                let pad = (max_arg_bytes - INSTR_PER_WORD) * COL_WIDTH;
+                writeln!(w, "{:pad$} {op:15} {}", "", imm.format_imm())?;
             }
             OpCode::Jmp
             | OpCode::JmpZero
@@ -60,26 +68,28 @@ pub fn disassemble_program(
                     *part = itr.next().map_or(0, |(_, &b)| b);
                 }
                 let addr = address_from_instructions(addr_parts);
-
-                write!(w, "{i:#08x}: {byte:0WORD_DIGITS$x}")?;
+                write!(w, "{i:#0ADDRESS_DIGITS$x}: {byte:0WORD_DIGITS$x}")?;
                 for p in &addr_parts {
                     write!(w, " {p:0WORD_DIGITS$x}")?;
                 }
-                // If the jump target is outside the program,
-                // write out the address that will actually be jumped to.
+                let pad = (max_arg_bytes - INSTR_PER_ADDRESS) * COL_WIDTH;
                 if addr >= p_len {
                     let mod_addr = addr % p_len;
-                    writeln!(w, " {op:15} {addr:#010x} -> {mod_addr:#010x}")?;
+                    writeln!(
+                        w,
+                        "{:pad$} {op:15} {addr:#0ADDRESS_DIGITS$x} -> {mod_addr:#0ADDRESS_DIGITS$x}",
+                        ""
+                    )?;
                 } else {
-                    writeln!(w, " {op:15} {addr:#010x}")?;
+                    writeln!(w, "{:pad$} {op:15} {addr:#0ADDRESS_DIGITS$x}", "")?;
                 }
             }
             _ => {
+                let pad = max_arg_bytes * COL_WIDTH;
                 writeln!(
                     w,
-                    "{i:#08x}: {byte:0WORD_DIGITS$x}{:width$} {op:15}",
-                    "",
-                    width = INSTR_PER_WORD * (WORD_DIGITS + 1)
+                    "{i:#0ADDRESS_DIGITS$x}: {byte:0WORD_DIGITS$x}{:pad$} {op:15}",
+                    ""
                 )?;
             }
         }

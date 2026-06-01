@@ -2,14 +2,12 @@
 
 use strum::EnumCount as _;
 
-#[allow(unused_imports)] // Only needed when [`MachineWord`] is an integer.
-use crate::numeric::{
-    Ceil as _, Epsilon as _, Floor as _, IsFinite as _, Round as _, Sqrt as _, Trunc as _,
-};
+#[cfg(feature = "int-word")]
+use crate::numeric::Sqrt as _;
 
 use crate::consts::{
-    INSTR_PER_ADDRESS, INSTR_PER_WORD, Instruction, MAX_INSTRUCTIONS, MAX_OUTPUT, MAX_STACK,
-    MachineWord,
+    Address, INSTR_PER_ADDRESS, INSTR_PER_WORD, Instruction, MAX_INSTRUCTIONS, MAX_OUTPUT,
+    MAX_STACK, MachineWord,
 };
 use crate::instr::OpCode;
 use crate::mw;
@@ -28,6 +26,7 @@ macro_rules! make_dispatch_table {
 }
 
 /// Maps [`OpCode`] values to the interpreter's operation function handlers.
+#[cfg(not(feature = "int-word"))]
 static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
     Halt     => op_halt,
     PushImm  => op_push_imm,
@@ -57,6 +56,44 @@ static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
     JmpAprxZero => op_jmp_aprx_zero,
     JmpPos      => op_jmp_pos,
     JmpFin      => op_jmp_fin,
+    JmpTos      => op_jmp_tos,
+};
+
+/// Maps [`OpCode`] values to the interpreter's operation function handlers.
+/// This is the int version of the mapping that turns some float specific
+/// instructions like `Ceil` or `Round` into `Nop`.  
+/// It also maps `JmpAprxZero` to `JmpZero` and `JmpFin` to `Jmp` since all int are finite
+/// and zero is the only int thats approximatley equal to zero.
+#[cfg(feature = "int-word")]
+static DISPATCH_TABLE: [OpCodeHandler; OpCode::COUNT] = make_dispatch_table! {
+    Halt     => op_halt,
+    PushImm  => op_push_imm,
+    PushIn   => op_push_in,
+    PushOne  => op_push_one,
+    PushZero => op_push_zero,
+    PopOut   => op_pop_out,
+    Add      => op_add,
+    Sub      => op_sub,
+    Mul      => op_mul,
+    Div      => op_div,
+    Max      => op_max,
+    Min      => op_min,
+    ModDiv   => op_mod_div,
+    Sqrt     => op_sqrt,
+    Round    => op_nop,
+    Trunc    => op_nop,
+    Ceil     => op_nop,
+    Floor    => op_nop,
+    Neg      => op_neg,
+    Abs      => op_abs,
+    Swap     => op_swap,
+    Remove   => op_remove,
+    Dup      => op_dup,
+    Jmp      => op_jmp,
+    JmpZero  => op_jmp_zero,
+    JmpAprxZero => op_jmp_zero,
+    JmpPos      => op_jmp_pos,
+    JmpFin      => op_jmp,
     JmpTos      => op_jmp_tos,
 };
 
@@ -140,7 +177,10 @@ impl Interpreter {
     /// Initialize a new interpreter with a [`Vec`] of [`Instruction`] bytes,
     /// which encode [`OpCode`]s and their immediate values.
     /// Input data can be supplied as a [`Vec`] of [`MachineWord`]s.
-    pub fn new_from_program(program: Vec<Instruction>, input: Vec<MachineWord>) -> Self {
+    /// If `program` is longer than the max value representable by `Address` it will
+    /// be cut short to that length.
+    pub fn new_from_program(mut program: Vec<Instruction>, input: Vec<MachineWord>) -> Self {
+        program.truncate(Address::MAX as usize);
         Self {
             instructions: program,
             input,
@@ -283,9 +323,11 @@ impl Interpreter {
     }
 
     op_conditional_jump!(op_jmp_zero, |s| s.stack.peek() == MachineWord::default());
+    #[cfg(not(feature = "int-word"))]
     op_conditional_jump!(op_jmp_aprx_zero, |s| s.stack.peek().abs()
         <= (MachineWord::EPSILON * mw!(10)));
     op_conditional_jump!(op_jmp_pos, |s| s.stack.peek() > MachineWord::default());
+    #[cfg(not(feature = "int-word"))]
     op_conditional_jump!(op_jmp_fin, |s| s.stack.peek().is_finite());
 
     op_two_operand!(op_add, +);
@@ -297,9 +339,13 @@ impl Interpreter {
     op_two_operand!(op_min, min);
 
     op_one_operand!(op_sqrt, sqrt);
+    #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_round, round);
+    #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_trunc, trunc);
+    #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_ceil, ceil);
+    #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_floor, floor);
     op_one_operand!(op_neg, -);
     op_one_operand!(op_abs, abs);
@@ -309,7 +355,6 @@ impl Interpreter {
 mod tests {
     use super::*;
 
-    use crate::numeric::TestLiterals as _;
     use crate::util::{instructions_from_word, patch_jmp, push_jmp};
 
     #[test]
@@ -416,9 +461,12 @@ mod tests {
             #[test]
             fn $name_skipped() {
                 // If jump is taken the data value will be present in the output unaltered.
+                // Otherwise the output will be two.
+                // This means that if `$val_skipped` is set to two this test will never fail.
                 let mut program: Vec<Instruction> = vec![OpCode::PushIn.into()];
                 let jmp_offset = push_jmp(&mut program, $opcode);
                 // jumped over if jump taken
+                program.push(OpCode::PushOne.into());
                 program.push(OpCode::PushOne.into());
                 program.push(OpCode::Add.into());
 
@@ -427,19 +475,28 @@ mod tests {
                 patch_jmp(&mut program, jmp_offset, pop_pos);
                 let mut int = Interpreter::new_from_program(program, vec![mw!($val_skipped)]);
                 int.execute();
-                assert_eq!(vec![mw!($val_skipped) + mw!(1)], int.output());
+                assert_eq!(vec![mw!(2)], int.output());
             }
         };
     }
     test_conditional_jump!(jmp_zero_taken, jmp_zero_not_taken, 0, 1, OpCode::JmpZero);
+    #[cfg(not(feature = "int-word"))]
     test_conditional_jump!(
         jmp_aprx_zero_taken,
         jmp_aprx_zero_not_taken,
-        MachineWord::EPSILON,
-        1,
+        mw!(9) * MachineWord::EPSILON,
+        mw!(11) * MachineWord::EPSILON,
         OpCode::JmpAprxZero
     );
     test_conditional_jump!(jmp_pos_taken, jmp_pos_not_taken, 1, 0, OpCode::JmpPos);
+    #[cfg(not(feature = "int-word"))]
+    test_conditional_jump!(
+        jmp_fin_taken,
+        jmp_fin_not_taken,
+        1,
+        MachineWord::NAN,
+        OpCode::JmpFin
+    );
 
     #[test]
     fn opcode_jmp_tos() {
@@ -552,30 +609,14 @@ mod tests {
         };
     }
     test_one_operand_opcode!(sqrt_opcode, 16, 4, OpCode::Sqrt);
-    test_one_operand_opcode!(
-        round_opcode,
-        MachineWord::ROUND_INPUT,
-        MachineWord::ROUND_EXPECTED,
-        OpCode::Round
-    );
-    test_one_operand_opcode!(
-        trunc_opcode,
-        MachineWord::TRUNC_INPUT,
-        MachineWord::TRUNC_EXPECTED,
-        OpCode::Trunc
-    );
-    test_one_operand_opcode!(
-        ceil_opcode,
-        MachineWord::CEIL_INPUT,
-        MachineWord::CEIL_EXPECTED,
-        OpCode::Ceil
-    );
-    test_one_operand_opcode!(
-        floor_opcode,
-        MachineWord::FLOOR_INPUT,
-        MachineWord::FLOOR_EXPECTED,
-        OpCode::Floor
-    );
+    #[cfg(not(feature = "int-word"))]
+    test_one_operand_opcode!(round_opcode, 5.49, 5.0, OpCode::Round);
+    #[cfg(not(feature = "int-word"))]
+    test_one_operand_opcode!(trunc_opcode, 5.99, 5.0, OpCode::Trunc);
+    #[cfg(not(feature = "int-word"))]
+    test_one_operand_opcode!(ceil_opcode, 5.01, 6.0, OpCode::Ceil);
+    #[cfg(not(feature = "int-word"))]
+    test_one_operand_opcode!(floor_opcode, -5.01, -6.0, OpCode::Floor);
     test_one_operand_opcode!(neg_opcode, 6, -6, OpCode::Neg);
     test_one_operand_opcode!(abs_opcode, -4, 4, OpCode::Abs);
 
@@ -620,10 +661,4 @@ mod tests {
         int.execute();
         assert_eq!(vec![mw!(5), mw!(5)], int.output(),);
     }
-
-    // This exists to make it abvious on the test output that the `i32` crate
-    // feature was enabled when the tests where ran.
-    #[cfg(feature = "word-i32")]
-    #[test]
-    fn i32_tests_ran() {}
 }

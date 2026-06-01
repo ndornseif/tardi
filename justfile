@@ -1,8 +1,10 @@
 test-all:
-  @echo "============= Testing with default crate features ============="
   cargo test
-  @echo "============= Testing with word-i32 crate feature ============="
-  cargo test --features word-i32
+  cargo test --features int-word
+  cargo test --features long-word
+  cargo test --features int-word,long-word
+  cargo test --features long-address
+  cargo test --features long-instruction
 
 examples:
   cargo run --example sqrt_stream
@@ -10,7 +12,7 @@ examples:
 lint:
   cargo clippy
 
-all: lint test-all
+all: test-all lint
 
 fuzz-f32:
   cargo fuzz run fuzz_target_f32

@@ -19,20 +19,45 @@ pub const MAX_INSTRUCTIONS: usize = u16::MAX as usize;
 ///
 /// Usually this is a floating point type; some opcodes lose their
 /// functionality if `MachineWord` is an integer. Must be signed.
+/// It has been set to `f32` because neither the `long-word` or the `int-word` features are enabled.
 ///
 /// ***All*** possible sequences of bytes (of the correct length) must represent a
 /// valid value of this type.
-///
-/// Selected at compile time: `f32` by default, `i32` with the `word-i32` feature.
-#[cfg(not(feature = "word-i32"))]
+#[cfg(all(not(feature = "long-word"), not(feature = "int-word")))]
 pub type MachineWord = f32;
 
 /// The type used to fill the stack and do calculations with.
 ///
-/// Integer variant selected with the `word-i32` feature. See the float
-/// variant for canonical documentation.
-#[cfg(feature = "word-i32")]
+/// Usually this is a floating point type; some opcodes lose their
+/// functionality if `MachineWord` is an integer. Must be signed.
+/// It has been set to `i32` because the `int-word` but not the `long-word` features are enabled.
+///
+/// ***All*** possible sequences of bytes (of the correct length) must represent a
+/// valid value of this type.
+#[cfg(all(not(feature = "long-word"), feature = "int-word"))]
 pub type MachineWord = i32;
+
+/// The type used to fill the stack and do calculations with.
+///
+/// Usually this is a floating point type; some opcodes lose their
+/// functionality if `MachineWord` is an integer. Must be signed.
+/// It has been set to `f64` because the `long-word` feature is enabled but `int-word` is not.
+///
+/// ***All*** possible sequences of bytes (of the correct length) must represent a
+/// valid value of this type.
+#[cfg(all(feature = "long-word", not(feature = "int-word")))]
+pub type MachineWord = f64;
+
+/// The type used to fill the stack and do calculations with.
+///
+/// Usually this is a floating point type; some opcodes lose their
+/// functionality if `MachineWord` is an integer. Must be signed.
+/// It has been set to `i64` because both the `long-word` or the `int-word` features are enabled.
+///
+/// ***All*** possible sequences of bytes (of the correct length) must represent a
+/// valid value of this type.
+#[cfg(all(feature = "long-word", feature = "int-word"))]
+pub type MachineWord = i64;
 
 /// Bytes in a [`MachineWord`] type.
 pub const WORD_SIZE: usize = std::mem::size_of::<MachineWord>();
@@ -51,13 +76,27 @@ macro_rules! mw {
 ///
 /// The length in bits of [`Instruction`] must be smaller or equal to that of [`MachineWord`].
 /// This is a consequence of the way handling of immediate values works.
-/// Parts of the code are not fully tested when this is not [`u8`].
 /// A change here also requires changing the `#[repr(type)]` statement for the
 /// [`crate::instr::OpCode`] enum.
+/// It has been set to `u8` because the `long-instruction` feature is not enabled.
 ///
 /// ***All*** possible sequences of bytes (of the correct length) must represent a
 /// valid value of this type.
+#[cfg(not(feature = "long-instruction"))]
 pub type Instruction = u8;
+
+/// Type used to encode bytecode instructions.
+///
+/// The length in bits of [`Instruction`] must be smaller or equal to that of [`MachineWord`].
+/// This is a consequence of the way handling of immediate values works.
+/// A change here also requires changing the `#[repr(type)]` statement for the
+/// [`crate::instr::OpCode`] enum.
+/// It has been set to `u16` because the `long-instruction` feature is enabled.
+///
+/// ***All*** possible sequences of bytes (of the correct length) must represent a
+/// valid value of this type.
+#[cfg(feature = "long-instruction")]
+pub type Instruction = u16;
 
 /// Bytes in an [`Instruction`] type.
 pub const INSTRUCTION_SIZE: usize = std::mem::size_of::<Instruction>();
@@ -68,6 +107,20 @@ pub const INSTR_PER_WORD: usize = WORD_SIZE / INSTRUCTION_SIZE;
 /// Type used to encode jump targets.
 ///
 /// The length in bits of [`Instruction`] must be smaller or equal to that of [`Address`].
+/// This should be set to an unsigned integer.
+///
+/// It has been set to `u16` because the `long-address` feature is not enabled.
+/// This limits the maximum program length to 65535, enable `long-address` for 32 bit addresses.
+#[cfg(not(feature = "long-address"))]
+pub type Address = u16;
+
+/// Type used to encode jump targets.
+///
+/// The length in bits of [`Instruction`] must be smaller or equal to that of [`Address`].
+/// This should be set to an unsigned integer.
+///
+/// It has been set to `u32` because the `long-address` feature is enabled.
+#[cfg(feature = "long-address")]
 pub type Address = u32;
 
 /// Bytes in a [`Address`] type.

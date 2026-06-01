@@ -28,6 +28,7 @@ pub fn address_from_instructions(parts: [Instruction; INSTR_PER_ADDRESS]) -> Add
 /// Turn a [`MachineWord`] into its representaion as [`Instruction`]s.
 ///
 /// Primarily used to encode immediate values into bytecode.
+#[allow(clippy::transmute_num_to_bytes)]
 pub fn instructions_from_word(word: MachineWord) -> [Instruction; INSTR_PER_WORD] {
     // SAFETY:
     // See [`word_from_instructions`].
@@ -37,6 +38,7 @@ pub fn instructions_from_word(word: MachineWord) -> [Instruction; INSTR_PER_WORD
 /// Turn a [`Address`] into its representaion as [`Instruction`]s.
 ///
 /// Primarily used to encode jump target addresses into bytecode.
+#[allow(clippy::transmute_num_to_bytes)]
 pub fn instructions_from_address(addr: Address) -> [Instruction; INSTR_PER_ADDRESS] {
     // SAFETY:
     // See: [`word_from_instruction`].

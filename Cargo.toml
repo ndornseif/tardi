@@ -11,7 +11,10 @@ repository = "https://github.com/ndornseif/tardi"
 
 
 [features]
-word-i32 = []
+int-word = []
+long-word = []
+long-instruction = []
+long-address = []
 
 [dependencies]
 strum = { version = "0.28.0", features = ["derive"] }

@@ -1,5 +1,8 @@
 //! A generic stack that handles over- and underflow.
 
+// `peek_at` and `len` will remain unused for now.
+#![allow(dead_code)]
+
 /// Represents a stack with a fixed size set by `N`.
 ///
 /// Overflowing the stack will drop the bottom element.

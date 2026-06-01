@@ -8,10 +8,11 @@
 use strum::{Display, EnumCount};
 
 #[allow(unused_imports)]
-use crate::consts::{Address, MachineWord};
+use crate::consts::{Address, Instruction, MachineWord};
 
 /// Represents a possible bytecode instruction for the interpreter.
-#[repr(u8)]
+#[cfg_attr(not(feature = "long-instruction"), repr(u8))]
+#[cfg_attr(feature = "long-instruction", repr(u16))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, EnumCount, Display)]
 pub enum OpCode {
     /// Does nothing.
@@ -97,18 +98,18 @@ pub enum OpCode {
     JmpTos,
 }
 
-impl From<u8> for OpCode {
-    fn from(v: u8) -> Self {
-        // SAFETY: All discriminants are consecutive from 0 to COUNT-1 (no explicit values),
-        // so v % COUNT is always a valid repr(u8) discriminant.
+impl From<Instruction> for OpCode {
+    fn from(v: Instruction) -> Self {
+        // SAFETY: All discriminants are consecutive from 0 to COUNT-1,
+        // so v % COUNT is always a valid repr(u8) or u16.
         #[allow(clippy::cast_possible_truncation)]
         unsafe {
-            std::mem::transmute(v % Self::COUNT as u8)
+            std::mem::transmute(v % Self::COUNT as Instruction)
         }
     }
 }
 
-impl From<OpCode> for u8 {
+impl From<OpCode> for Instruction {
     fn from(op: OpCode) -> Self {
         op as Self
     }
