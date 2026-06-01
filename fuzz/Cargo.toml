@@ -7,6 +7,9 @@ edition = "2024"
 [package.metadata]
 cargo-fuzz = true
 
+[features]
+int-word = ["tardi/int-word"]
+
 [dependencies]
 libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
 
@@ -19,3 +22,11 @@ path = "fuzz_targets/fuzz_target_f32.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "fuzz_target_i32"
+path = "fuzz_targets/fuzz_target_i32.rs"
+test = false
+doc = false
+bench = false
+required-features = ["int-word"]
