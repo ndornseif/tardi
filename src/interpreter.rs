@@ -2,9 +2,6 @@
 
 use strum::EnumCount as _;
 
-#[cfg(feature = "int-word")]
-use crate::numeric::Sqrt as _;
-
 use crate::consts::{
     Address, INSTR_PER_ADDRESS, INSTR_PER_WORD, Instruction, MAX_INSTRUCTIONS, MAX_OUTPUT,
     MAX_STACK, MachineWord,
@@ -351,7 +348,8 @@ impl Interpreter {
     fn op_div(&mut self) {
         let b = self.stack.pop();
         let a = self.stack.pop();
-        self.stack.push(a.checked_div(b).unwrap_or(MachineWord::default()));
+        self.stack
+            .push(a.checked_div(b).unwrap_or(MachineWord::default()));
     }
     #[cfg(not(feature = "int-word"))]
     op_two_operand!(op_div, /);
@@ -359,14 +357,23 @@ impl Interpreter {
     fn op_mod_div(&mut self) {
         let b = self.stack.pop();
         let a = self.stack.pop();
-        self.stack.push(a.checked_rem(b).unwrap_or(MachineWord::default()));
+        self.stack
+            .push(a.checked_rem(b).unwrap_or(MachineWord::default()));
     }
     #[cfg(not(feature = "int-word"))]
     op_two_operand!(op_mod_div, %);
     op_two_operand!(op_max, max);
     op_two_operand!(op_min, min);
-
-    op_one_operand!(op_sqrt, sqrt);
+    #[cfg(not(feature = "int-word"))]
+    fn op_sqrt(&mut self) {
+        let a = self.stack.pop();
+        self.stack.push((a.abs()).sqrt());
+    }
+    #[cfg(feature = "int-word")]
+    fn op_sqrt(&mut self) {
+        let a = self.stack.pop();
+        self.stack.push((a.unsigned_abs()).isqrt() as MachineWord);
+    }
     #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_round, round);
     #[cfg(not(feature = "int-word"))]

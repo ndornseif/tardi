@@ -51,7 +51,7 @@ pub enum OpCode {
     /// Pop the top two values from the stack and push their remainder.
     /// The second value is modulo divided by the top one.
     ModDiv,
-    /// Pop the top value from the stack and push its square root.
+    /// Pop the top value from the stack and push the square root of its magnitude.
     Sqrt,
     /// Pop the top value from the stack and push its rounded value.
     /// Nop if [`MachineWord`] is an integer.

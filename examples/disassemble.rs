@@ -7,6 +7,9 @@
 //! ```
 //! If no file is given, bytes are read from stdin.
 //! Can be used to inspect fuzzer crashes for example.
+//! Keep in mind that this can not seperate instructions and data.
+//! If the crash relies on data input this wont work.
+//! This is work in progress.
 //! ```text
 //! cargo run --example disassemble --features int-word \
 //!     fuzz/artifacts/fuzz_target_i32/crash-349d5a6c6ec6050d0e6651ebdb2dc2f8627e5aea
@@ -15,7 +18,7 @@
 use std::env;
 use std::io::{self, Read as _};
 
-use tardi::consts::{Instruction, INSTRUCTION_SIZE};
+use tardi::consts::{INSTRUCTION_SIZE, Instruction};
 use tardi::disassembler::disassemble_program;
 
 fn main() {

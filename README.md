@@ -50,7 +50,7 @@ It has the same overflow behaviour as the main stack, so only the most recently 
 | `ModDiv` | `a b -> a%b` | Second value modulo top. |
 | `Min` | `a b -> min(a,b)` | |
 | `Max` | `a b -> max(a,b)` | |
-| `Sqrt` | `a -> sqrt(a)` | Integer mode uses `isqrt`. |
+| `Sqrt` | `a -> sqrt(\|a\|)` | Integer mode uses `isqrt`. Note the use of abs.|
 | `Round` | `a -> round(a)` | No-op in integer mode. |
 | `Trunc` | `a -> trunc(a)` | No-op in integer mode. |
 | `Ceil` | `a -> ceil(a)` | No-op in integer mode. |

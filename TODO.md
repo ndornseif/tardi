@@ -25,6 +25,9 @@
 - [ ] Make use of feature flags in disassembler to replace `format_imm`. Remove it from 
       numeric.rs
 - [x] Allow changing the execution limit at runtime.
+- [ ] Expand disassembler to deal with fuzzer crash artifacts that contain data not just
+      instructions.
+- [ ] Add example to print execution of program step by step for debugging.
 
 ## Low
 
