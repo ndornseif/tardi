@@ -124,6 +124,7 @@ pub struct Interpreter {
     halted: bool,
     execution_count: usize,
     halt_reason: HaltReason,
+    instruction_limit: usize,
 }
 
 macro_rules! op_one_operand {
@@ -179,11 +180,24 @@ impl Interpreter {
     /// Input data can be supplied as a [`Vec`] of [`MachineWord`]s.
     /// If `program` is longer than the max value representable by `Address` it will
     /// be cut short to that length.
-    pub fn new_from_program(mut program: Vec<Instruction>, input: Vec<MachineWord>) -> Self {
+    /// The interpreter will halt automaticaly after `MAX_INSTRUCTIONS` instructions
+    /// have been executed. Use [`Self::new_with_program_and_limit`] to set a custom limt.
+    pub fn new_from_program(program: Vec<Instruction>, input: Vec<MachineWord>) -> Self {
+        Self::new_with_program_and_limit(program, input, MAX_INSTRUCTIONS)
+    }
+
+    /// Functions like [`Self::new_from_program`] but allows specifying
+    /// the number of instructions to execute before the interpreter halts.
+    pub fn new_with_program_and_limit(
+        mut program: Vec<Instruction>,
+        input: Vec<MachineWord>,
+        instruction_limit: usize,
+    ) -> Self {
         program.truncate(Address::MAX as usize);
         Self {
             instructions: program,
             input,
+            instruction_limit,
             ..Default::default()
         }
     }
@@ -208,9 +222,9 @@ impl Interpreter {
     /// Will end when:
     ///     - Halt instruction called
     ///     - End of program reached
-    ///     - [`MAX_INSTRUCTIONS`] instructions executed
+    ///     - Instruction limit reached
     pub fn execute(&mut self) {
-        while self.execution_count < MAX_INSTRUCTIONS {
+        while self.execution_count < self.instruction_limit {
             self.dispatch();
             if self.halted() {
                 return;
@@ -362,11 +376,7 @@ mod tests {
         let program = vec![OpCode::Nop.into(), OpCode::Halt.into()];
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.execute();
-        assert_eq!(
-            Some(HaltReason::HaltInstruction),
-            int.halt_reason(),
-            "incorrect halt reason after halt instruction"
-        );
+        assert_eq!(Some(HaltReason::HaltInstruction), int.halt_reason(),);
     }
 
     #[test]
@@ -374,11 +384,7 @@ mod tests {
         let program = vec![OpCode::Nop.into(), OpCode::Nop.into()];
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.execute();
-        assert_eq!(
-            Some(HaltReason::EndOfProgram),
-            int.halt_reason(),
-            "incorrect halt reason after reaching end of program"
-        );
+        assert_eq!(Some(HaltReason::EndOfProgram), int.halt_reason(),);
     }
 
     #[test]
@@ -390,10 +396,26 @@ mod tests {
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.execution_count = MAX_INSTRUCTIONS - 10;
         int.execute();
+        assert_eq!(Some(HaltReason::MaxInstructions), int.halt_reason(),);
+    }
+
+    #[test]
+    fn halt_on_custom_instruction_limit() {
+        const TEST_LIMIT: usize = 20;
+        let mut program = vec![OpCode::Nop.into()];
+        // Constructing an infinite loop.
+        let offset = push_jmp(&mut program, OpCode::Jmp);
+        patch_jmp(&mut program, offset, 0);
+        let mut int = Interpreter::new_with_program_and_limit(program, vec![], TEST_LIMIT);
+        int.execute();
         assert_eq!(
             Some(HaltReason::MaxInstructions),
             int.halt_reason(),
-            "incorrect halt reason when reaching instruction limit"
+            "halt reason should be set to instruction limit halt"
+        );
+        assert_eq!(
+            TEST_LIMIT, int.execution_count,
+            "instruction limit halt should occur after specified number of instructions executed"
         );
     }
 

@@ -12,7 +12,7 @@ pub const MAX_STACK: usize = 256;
 /// Performance suffers when this is not a power of two.
 pub const MAX_OUTPUT: usize = 16;
 
-/// Hard limit on the number of instructions a program may execute.
+/// Default limit on the number of instructions a program may execute.
 pub const MAX_INSTRUCTIONS: usize = u16::MAX as usize;
 
 /// The type used to fill the stack and do calculations with.

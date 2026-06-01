@@ -3,15 +3,8 @@ Tiny stack VM where every sequence of bytes is a valid program.
 The VM is meant to allow genetic algorithms to explore a solution space more efficiently. A finalized program should then be adapted to some other execution platform.
 
 ## Architecture
-Note that all constants mentionded here can be found in the `consts` module.  
+Note that all constants mentioned here can be found in the `consts` module.  
 The `Interpreter` struct holds a fixed-size main stack, a fixed-size output stack, an input list, a program counter, and execution metadata.
-
-The main public entry points are:
-- `Interpreter::new_from_program(bytecode, input)` — construct from a `Vec<Instruction>` and a `Vec<MachineWord>` input list.
-- `Interpreter::execute()` — run until halted.
-- `Interpreter::dispatch()` — execute one instruction.
-- `Interpreter::output()` — retrieve the output stack as a `Vec`.
-- `Interpreter::halt_reason()` — returns `Some(HaltReason)` once halted.
 
 ## Bytecode
 Instructions are encoded as elements of type `Instruction`, by default `u8` but can be set to `u16` using the `long-instruction` feature.
@@ -63,7 +56,7 @@ It has the same overflow behaviour as the main stack, so only the most recently 
 | `Ceil` | `a -> ceil(a)` | No-op in integer mode. |
 | `Floor` | `a -> floor(a)` | No-op in integer mode. |
 | `Neg` | `a -> -a` | |
-| `Abs` | `a -> |a|` | |
+| `Abs` | `a -> \|a\|` | |
 | `Swap` | `a b -> b a` | Swap the top two elements. |
 | `Remove` | `a ->` | Discard the top element. |
 | `Dup` | `a -> a a` | Duplicate the top element. |
@@ -121,7 +114,7 @@ Changing a flag changes the opcode encoding of existing programs.
 | `int-word` | `MachineWord` becomes the signed integer variant (`i32` or `i64`). Float-only instructions become no-ops. |
 | `long-word` | `MachineWord` doubles in width (`f64` or `i64`). `INSTR_PER_WORD` doubles accordingly. |
 | `long-instruction` | `Instruction` becomes `u16`. Doubles the opcode space and the width of all embedded immediates and addresses. |
-| `long-address` | `Address` becomes `u32`. Allows programs up to ~4 GiB instead of 64 KiB. Note that utilizing this requires raising `MAX_INSTRUCTIONS`. |
+| `long-address` | `Address` becomes `u32`. Allows programs up to ~4 GiB instead of 64 KiB. Note that utilizing this requires raising `MAX_INSTRUCTIONS` or setting a custom instruction limit with `Interpreter::new_with_program_and_limit()`. |
 
 ## Performance
 - `MAX_STACK` and `MAX_OUTPUT` should be powers of two. The ring-buffer index is computed as `push_count % N`; a power of two allows the compiler to replace this with a bitwise AND.

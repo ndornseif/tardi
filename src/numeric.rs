@@ -45,4 +45,3 @@ macro_rules! impl_sqrt_for_int {
 
 #[cfg(feature = "int-word")]
 impl_sqrt_for_int!(i8, i16, i32, i64, i128, isize);
-

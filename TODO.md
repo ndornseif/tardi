@@ -24,7 +24,7 @@
       their bit width.
 - [ ] Make use of feature flags in disassembler to replace `format_imm`. Remove it from 
       numeric.rs
-- [ ] All changing the execution limit at runtime.
+- [x] Allow changing the execution limit at runtime.
 
 ## Low
 
@@ -33,7 +33,7 @@
 - [ ] In doc comments, replace bare `` `val` `` with `[`val`]` where the type is in scope.
 - [ ] Rewrite assert failure messages in a consistent tense and tone.
       Not needed where the test has a single assert and the test name already describes it.
-- [ ] Fuzz the `i32` `MachineWord` crate feature.
+- [x] Fuzz the `i32` `MachineWord` crate feature.
 - [ ] Spell check doc-comments.
 - [ ] Introduce examples in public API functions.
 - [x] Make interpreter cut program short if it is longer than `Address::MAX`.

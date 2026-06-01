@@ -26,6 +26,7 @@
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::use_debug)]
 
+#[cfg(not(feature = "int-word"))]
 use std::time::Instant;
 
 #[cfg(not(feature = "int-word"))]
