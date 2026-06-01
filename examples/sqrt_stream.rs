@@ -26,6 +26,8 @@
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::use_debug)]
 
+use std::time::Instant;
+
 #[cfg(not(feature = "int-word"))]
 use tardi::{
     consts::Instruction,
@@ -107,13 +109,17 @@ fn main() {
     println!("=== Disassembly ===\n{s}");
 
     let mut interp = Interpreter::new_from_program(program, input);
+    let start = Instant::now();
     interp.execute();
+    let elapsed = start.elapsed();
+
     let rslt = interp.output();
     let expected = vec![mw!(500), mw!(300), mw!(0), mw!(141)];
     assert_eq!(expected, rslt, "Output should match expected values.");
 
     println!("=== Output ===");
     println!("{:?}", interp.output());
+    println!("\nTotal Program runtime: {:?}", elapsed);
 }
 
 #[cfg(feature = "int-word")]

@@ -20,6 +20,8 @@ The stack size is set by the `MAX_STACK` constant, the data type it contains by 
 
 ## Fuzzing
 
+## Feature flags
+
 ## just
 This project uses [just](https://github.com/casey/just) to manage testing and fuzzing with different sets of crate features enabled. Use `just test-all` to test all relevant crate features.
 

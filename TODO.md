@@ -17,12 +17,13 @@
 - [ ] Add functionality to convert an arbitrary program into a canonical form
       (e.g. replace out-of-range bytes with their in-range equivalents).
 - [x] Write a more complex disassembler showcase example.
-- [ ] Clean up dead code in numeric.rs now that int/float switch flag exists.
+- [x] Clean up dead code in numeric.rs now that int/float switch flag exists.
 - [ ] Implement additional ways to process interpreter output than `.output()`?
 - [ ] Reverse direction of output when returned from interpreter?
 - [x] Update disassembler to output addresses with the number of hex digits dictated by 
       their bit width.
-- [ ] Make use of feature flags in disassembler to reduce code duplication.
+- [ ] Make use of feature flags in disassembler to replace `format_imm`. Remove it from 
+      numeric.rs
 
 ## Low
 
