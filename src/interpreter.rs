@@ -388,6 +388,7 @@ mod tests {
         let offset = push_jmp(&mut program, OpCode::Jmp);
         patch_jmp(&mut program, offset, 0);
         let mut int = Interpreter::new_from_program(program, vec![]);
+        int.execution_count = MAX_INSTRUCTIONS - 10;
         int.execute();
         assert_eq!(
             Some(HaltReason::MaxInstructions),
