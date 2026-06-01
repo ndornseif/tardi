@@ -80,7 +80,10 @@ fn main() {
     program.push(OpCode::PopOut.into());
     // Jmp back to start
     let jmp_positive_back = push_jmp(&mut program, OpCode::Jmp);
-    patch_jmp(&mut program, jmp_positive_back, loop_start);
+    // Since jump addresses are taken modulo the program length,
+    // this jump target will also end up at `loop_start`.
+    let loop_start_modulo = loop_start + program.len();
+    patch_jmp(&mut program, jmp_positive_back, loop_start_modulo);
 
     // Input is processed using pop on the intput.
     // The sentinel is placed in front so it is processed last.

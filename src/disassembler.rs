@@ -1,6 +1,6 @@
 //! Disassemble bytecode
 
-use crate::consts::{INSTR_PER_ADDRESS, INSTR_PER_WORD, INSTRUCTION_SIZE, Instruction};
+use crate::consts::{INSTR_PER_ADDRESS, INSTR_PER_WORD, INSTRUCTION_SIZE, Instruction, Address};
 use crate::instr::OpCode;
 use crate::numeric::FormatImm as _;
 use crate::util::{address_from_instructions, word_from_instructions};
@@ -54,16 +54,25 @@ pub fn disassemble_program(
             | OpCode::JmpAprxZero
             | OpCode::JmpPos
             | OpCode::JmpFin => {
+                let p_len = program.len() as Address;
                 let mut addr_parts = [Instruction::default(); INSTR_PER_ADDRESS];
                 for part in &mut addr_parts {
                     *part = itr.next().map_or(0, |(_, &b)| b);
                 }
                 let addr = address_from_instructions(addr_parts);
+
                 write!(w, "{i:#08x}: {byte:0WORD_DIGITS$x}")?;
                 for p in &addr_parts {
                     write!(w, " {p:0WORD_DIGITS$x}")?;
                 }
-                writeln!(w, " {op:15} {addr:#010x}")?;
+                // If the jump target is outside the program,
+                // write out the address that will actually be jumped to.
+                if addr >= p_len {
+                    let mod_addr = addr % p_len;
+                    writeln!(w, " {op:15} {addr:#010x} -> {mod_addr:#010x}")?;
+                } else {
+                    writeln!(w, " {op:15} {addr:#010x}")?;
+                }
             }
             _ => {
                 writeln!(
