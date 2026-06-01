@@ -12,7 +12,7 @@
 
 ## Medium
 
-- [ ] Get README into a usable state.
+- [x] Get README into a usable state.
 - [x] Consolidate jump implementations using macros.
 - [ ] Add functionality to convert an arbitrary program into a canonical form
       (e.g. replace out-of-range bytes with their in-range equivalents).
@@ -24,6 +24,7 @@
       their bit width.
 - [ ] Make use of feature flags in disassembler to replace `format_imm`. Remove it from 
       numeric.rs
+- [ ] All changing the execution limit at runtime.
 
 ## Low
 

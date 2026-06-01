@@ -7,21 +7,21 @@
 //!
 //! Disassembly as printed by this example:
 //!
-//! 0x000000: 03             PushIn         
-//! 0x000001: 1b 15 00 00 00 JmpPos          0x00000015
-//! 0x000006: 1a 0d 00 00 00 JmpAprxZero     0x0000000d
-//! 0x00000b: 16             Remove         
-//! 0x00000c: 01             Halt           
-//! 0x00000d: 16             Remove         
-//! 0x00000e: 05             PushZero       
-//! 0x00000f: 06             PopOut         
-//! 0x000010: 18 00 00 00 00 Jmp             0x00000000
-//! 0x000015: 0e             Sqrt           
-//! 0x000016: 02 00 00 c8 42 PushImm         1e2
-//! 0x00001b: 09             Mul            
-//! 0x00001c: 0f             Round          
-//! 0x00001d: 06             PopOut         
-//! 0x00001e: 18 00 00 00 00 Jmp             0x00000000
+//! 0x0000: 03             PushIn         
+//! 0x0001: 1b 0f 00       JmpPos          0x000f
+//! 0x0004: 1a 09 00       JmpAprxZero     0x0009
+//! 0x0007: 16             Remove         
+//! 0x0008: 01             Halt           
+//! 0x0009: 16             Remove         
+//! 0x000a: 05             PushZero       
+//! 0x000b: 06             PopOut         
+//! 0x000c: 18 00 00       Jmp             0x0000
+//! 0x000f: 0e             Sqrt           
+//! 0x0010: 02 00 00 c8 42 PushImm         1e2
+//! 0x0015: 09             Mul            
+//! 0x0016: 0f             Round          
+//! 0x0017: 06             PopOut         
+//! 0x0018: 18 1b 00       Jmp             0x001b -> 0x0000
 
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::use_debug)]
