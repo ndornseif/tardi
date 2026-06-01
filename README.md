@@ -1,5 +1,6 @@
 # TARDI VM
-Tiny stack VM where every sequence of bytes is a valid program.
+Tiny stack VM where every sequence of bytes is a valid program.  
+The VM is meant to allow genetic algorithms to explore a solution space more efficiently. A finalized program should then be adapted to some other execution platform.
 
 ## Architecture
 Note that all constants mentionded here can be found in the `consts` module.  
@@ -20,9 +21,6 @@ This means that every possible byte maps to some valid instruction.
 Immediate `MachineWord` values are encoded as `INSTR_PER_WORD` consecutive instruction slots immediately following the opcode.
 Jump target addresses are encoded as `INSTR_PER_ADDRESS` consecutive instruction slots.
 Bytes that extend past the end of the program are treated as zero.
-
-The VM is meant to allow genetic algorithms to explore a solution space more efficiently. A finalized program should then be 
-adapted to some other execution platform or converted into the `canonical` version that does not rely on many of TARDIs more eccentric behaviours.
 
 ## The Stack
 The stack size is set by the `MAX_STACK` constant (default 256), the data type it contains by the `MachineWord` type.
