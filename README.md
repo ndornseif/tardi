@@ -104,6 +104,15 @@ Each line follows the format `address: hex_bytes  mnemonic  [operand]`:
 0x0018: 18 1b 00       Jmp             0x001b -> 0x0000
 ```
 
+A disassembler example in `examples/disassembler.rs` can be used to disassemble programs from file or stdin. To view a fuzzer artifact for example:
+```sh
+
+cargo run --example disassemble --features int-word \
+     fuzz/artifacts/fuzz_target_i32/crash-349d5a6c6ec6050d0e6651ebdb2dc2f8627e5aea
+```
+```
+```
+
 ## Feature flags
 Four independent feature flags control the concrete types used throughout the crate.
 Changing a flag changes the opcode encoding of existing programs.
@@ -132,6 +141,8 @@ Two fuzz targets exercise the interpreter with arbitrary bytecode and input data
 | `fuzz_target_i32` | `int-word` | `i32` |
 
 Run with `just fuzz-f32` or `just fuzz-i32`.
+
+`tests/fuzzer_hits.rs` contains tests for all problems that were found by the fuzzer.
 
 ## License
 This crate may be licensed under the [GNU Lesser General Public License, version 2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html#SEC1).

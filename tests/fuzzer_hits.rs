@@ -6,7 +6,7 @@
 /// ## Artifacts 
 /// fuzz/artifacts/fuzz_target_i32/crash-349d5a6c6ec6050d0e6651ebdb2dc2f8627e5aea
 /// fuzz/artifacts/fuzz_target_i32/crash-82eddc4252ed3758575559ad963c0118926d7725
-#[cfg(all(not(feature = "long-word"), feature = "int-word", not(feature = "long-instruction"), not(feature = "long-address")))]
+#[cfg(feature = "int-word")]
 mod div_by_zero {
     use tardi::{interpreter::Interpreter, instr::OpCode};
 
