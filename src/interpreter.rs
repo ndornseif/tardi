@@ -233,6 +233,16 @@ impl Interpreter {
         self.output.to_vec()
     }
 
+    /// Return the program bytecode.
+    pub fn program(&self) -> &[Instruction] {
+        &self.instructions
+    }
+
+    /// Return the remaining input data.
+    pub fn input(&self) -> &[MachineWord] {
+        &self.input
+    }
+
     /// Execute program.
     /// Will end when:
     ///     - Halt instruction called

@@ -8,7 +8,7 @@
 //! | Offset | Size    | Field           | Description                                                                 |
 //! |--------|---------|-----------------|-----------------------------------------------------------------------------|
 //! | 0      | 4 bytes | Magic           | Always `0x001A_D1BC` as `u32`.                                              |
-//! | 4      | 4 bytes | Version         | Contains crate version as top three bytes, format version as least LS byte. |
+//! | 4      | 4 bytes | Version         | Contains crate version as top three bytes, format version as last byte.     |
 //! | 8      | 4 bytes | Flags           | [`FileFlags`] feature bits encoded as `u32`.                                |
 //! | 12     | 4 bytes | Data word count | Number of input [`MachineWord`]s following the header.                      |
 //!
@@ -30,12 +30,18 @@ use crate::util::{instructions_from_word, word_from_instructions};
 const MAGIC: u32 = 0x001A_D1BC;
 
 bitflags! {
+    /// Reprensents the set of flags that could be set in a file.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    struct FileFlags: u32 {
+    pub struct FileFlags: u32 {
+        /// `int-word` crate feature enabled?
         const INT_WORD        = 0x0000_0001;
+        /// `long-word` crate feature enabled?
         const LONG_WORD       = 0x0000_0002;
+        /// `long-instruction` crate feature enabled?
         const LONG_INSTRUCTION = 0x0000_0004;
+        /// `long-address` crate feature enabled?
         const LONG_ADDRESS    = 0x0000_0008;
+        /// Is there data attached or just instructions
         const DATA_ATTACHED   = 0x0000_0010;
     }
 }
@@ -163,7 +169,7 @@ pub fn write_program<W: Write>(
     Ok(())
 }
 
-/// Read a tardi file from `reader` and return `(program, input)` ready to pass to an [`Interpreter`].
+/// Read a tardi file from `reader` and return `(program, input)` ready to pass to an [`Interpreter`](`crate::interpreter::Interpreter`).
 ///
 /// # Errors
 ///
