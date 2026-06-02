@@ -1,28 +1,45 @@
-//! Read a program from a file or stdin and print its disassembly.
+//! Read a fuzz artifact or raw bytecode from a file or stdin and print its disassembly.
 //!
 //! ## Usage
 //! ```text
-//! cargo run --example disassemble [file]
-//! cargo run --example disassemble --features int-word [file]
+//! cargo run --example disassemble [--arbitrary|-a] [file]
+//! cargo run --example disassemble --features int-word [--arbitrary|-a] [file]
 //! ```
 //! If no file is given, bytes are read from stdin.
-//! Can be used to inspect fuzzer crashes for example.
-//! Keep in mind that this can not seperate instructions and data.
-//! If the crash relies on data input this wont work.
-//! This is work in progress.
+//! By default all bytes are treated as raw bytecode with no input data.
+//! Pass `--arbitrary` or `-a` to parse as an `arbitrary`-encoded fuzz artifact
+//! (`Input { bytecode: Vec<Instruction>, data: Vec<MachineWord> }`).
 //! ```text
-//! cargo run --example disassemble --features int-word \
+//! cargo run --example disassemble --features int-word -- --arbitrary \
 //!     fuzz/artifacts/fuzz_target_i32/crash-349d5a6c6ec6050d0e6651ebdb2dc2f8627e5aea
 //! ```
 
 use std::env;
 use std::io::{self, Read as _};
 
-use tardi::consts::{INSTRUCTION_SIZE, Instruction};
+use arbitrary::{Arbitrary, Unstructured};
+
+use tardi::consts::{INSTRUCTION_SIZE, Instruction, MachineWord};
 use tardi::disassembler::disassemble_program;
 
+#[derive(Arbitrary, Debug)]
+struct FuzzInput {
+    bytecode: Vec<Instruction>,
+    data: Vec<MachineWord>,
+}
+
 fn main() {
-    let bytes: Vec<u8> = match env::args().nth(1) {
+    let mut args = env::args().skip(1).peekable();
+
+    let use_arbitrary = matches!(
+        args.peek().map(String::as_str),
+        Some("--arbitrary") | Some("-a")
+    );
+    if use_arbitrary {
+        let _ = args.next();
+    }
+
+    let bytes: Vec<u8> = match args.next() {
         Some(path) => std::fs::read(&path).expect("failed to read file"),
         None => {
             let mut buf = Vec::new();
@@ -33,29 +50,53 @@ fn main() {
         }
     };
 
-    let trailing = bytes.len() % INSTRUCTION_SIZE;
-    if trailing != 0 {
+    let (bytecode, data): (Vec<Instruction>, Vec<MachineWord>) = if use_arbitrary {
+        match FuzzInput::arbitrary(&mut Unstructured::new(&bytes)) {
+            Ok(input) => {
+                eprintln!(
+                    "fuzz artifact: {} byte(s) -> {} instruction(s), {} input word(s)",
+                    bytes.len(),
+                    input.bytecode.len(),
+                    input.data.len()
+                );
+                (input.bytecode, input.data)
+            }
+            Err(e) => {
+                eprintln!("error: failed to decode as arbitrary fuzz artifact: {e}");
+                std::process::exit(1);
+            }
+        }
+    } else {
+        let trailing = bytes.len() % INSTRUCTION_SIZE;
+        if trailing != 0 {
+            eprintln!(
+                "warning: {trailing} trailing byte(s) ignored \
+                 (input length not a multiple of INSTRUCTION_SIZE={INSTRUCTION_SIZE})"
+            );
+        }
+        let instructions: Vec<Instruction> = bytes
+            .chunks_exact(INSTRUCTION_SIZE)
+            .map(|chunk| {
+                let arr: [u8; INSTRUCTION_SIZE] = chunk.try_into().unwrap();
+                Instruction::from_le_bytes(arr)
+            })
+            .collect();
         eprintln!(
-            "warning: {trailing} trailing byte(s) ignored \
-             (input length not a multiple of INSTRUCTION_SIZE={INSTRUCTION_SIZE})"
+            "{} byte(s) -> {} instruction(s)",
+            bytes.len() - trailing,
+            instructions.len()
         );
+        (instructions, vec![])
+    };
+
+    if !data.is_empty() {
+        eprintln!("input data:");
+        for word in &data {
+            eprintln!("  {word}");
+        }
     }
 
-    let instructions: Vec<Instruction> = bytes
-        .chunks_exact(INSTRUCTION_SIZE)
-        .map(|chunk| {
-            let arr: [u8; INSTRUCTION_SIZE] = chunk.try_into().unwrap();
-            Instruction::from_le_bytes(arr)
-        })
-        .collect();
-
-    eprintln!(
-        "{} byte(s) -> {} instruction(s)",
-        bytes.len() - trailing,
-        instructions.len()
-    );
-
     let mut out = String::new();
-    disassemble_program(&mut out, &instructions).expect("disassembly failed");
+    disassemble_program(&mut out, &bytecode).expect("disassembly failed");
     print!("{out}");
 }
