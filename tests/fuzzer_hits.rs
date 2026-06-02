@@ -19,7 +19,7 @@ mod div_by_zero {
 
     #[test]
     fn mod_div_by_zero() {
-         let program = vec![OpCode::PushZero.into(), OpCode::ModDiv.into()];
+        let program = vec![OpCode::PushZero.into(), OpCode::ModDiv.into()];
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.execute();
     }
@@ -56,7 +56,7 @@ mod negative_sqrt {
 /// fuzz/artifacts/fuzz_target_i32/minimized-from-41dfc1f64ab83852e34b089c08f69af9391c1e73
 #[cfg(feature = "int-word")]
 mod int_ovfl {
-    use tardi::{instr::OpCode, interpreter::Interpreter, mw, consts::MachineWord};
+    use tardi::{consts::MachineWord, instr::OpCode, interpreter::Interpreter, mw};
 
     #[test]
     fn mul_ovfl() {
@@ -107,5 +107,28 @@ mod int_ovfl {
             int.output(),
             "integer subtraction should be wrapping."
         );
+    }
+}
+
+/// General crashes caused by trying to negate `MachineWord::MIN`.
+///
+/// ## Artifacts
+/// fuzz/artifacts/fuzz_target_i32/minimized-from-7074034724a4fa82431d8eef481626145587944a
+#[cfg(feature = "int-word")]
+mod int_min_negation {
+    use tardi::{consts::MachineWord, instr::OpCode, interpreter::Interpreter};
+
+    #[test]
+    fn jump_tos() {
+        let program = vec![OpCode::PushIn.into(), OpCode::JmpTos.into()];
+        let mut int = Interpreter::new_from_program(program, vec![MachineWord::MIN]);
+        int.execute();
+    }
+
+    #[test]
+    fn neg() {
+        let program = vec![OpCode::PushIn.into(), OpCode::Neg.into()];
+        let mut int = Interpreter::new_from_program(program, vec![MachineWord::MIN]);
+        int.execute();
     }
 }

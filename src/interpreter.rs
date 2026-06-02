@@ -326,6 +326,14 @@ impl Interpreter {
         self.program_counter = self.read_address_immediate();
     }
 
+    #[cfg(feature = "int-word")]
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation)]
+    fn op_jmp_tos(&mut self) {
+        let addr = self.stack.pop().saturating_abs();
+        self.program_counter = (addr as usize) % self.instructions.len();
+    }
+    #[cfg(not(feature = "int-word"))]
     #[allow(clippy::cast_sign_loss)]
     #[allow(clippy::cast_possible_truncation)]
     fn op_jmp_tos(&mut self) {
@@ -398,7 +406,12 @@ impl Interpreter {
     op_one_operand!(op_ceil, ceil);
     #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_floor, floor);
+
+    #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_neg, -);
+    #[cfg(feature = "int-word")]
+    op_one_operand!(op_neg, saturating_neg);
+
     op_one_operand!(op_abs, abs);
 }
 

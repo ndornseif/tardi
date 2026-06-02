@@ -1,6 +1,6 @@
 //! # Instruction definitions
 //!
-//! ## Arithmetic 
+//! ## Arithmetic
 //! All integer arithmetric is wrapping unless specified otherwise.
 //! Float arithmetric follows the IEEE rules.
 //!

@@ -55,7 +55,7 @@ It has the same overflow behaviour as the main stack, so only the most recently 
 | `Trunc` | `a -> trunc(a)` | No-op in integer mode. |
 | `Ceil` | `a -> ceil(a)` | No-op in integer mode. |
 | `Floor` | `a -> floor(a)` | No-op in integer mode. |
-| `Neg` | `a -> -a` | |
+| `Neg` | `a -> -a` | Saturating for ints. e.g. `i32::MIN` -> `i32::MAX` |
 | `Abs` | `a -> \|a\|` | |
 | `Swap` | `a b -> b a` | Swap the top two elements. |
 | `Remove` | `a ->` | Discard the top element. |
@@ -65,7 +65,7 @@ It has the same overflow behaviour as the main stack, so only the most recently 
 | `JmpAprxZero` | — | Jump if TOS is within `10 * EPSILON` of zero (does not pop). Identical to `JmpZero` in integer mode. |
 | `JmpPos` | — | Jump if TOS is positive (does not pop). |
 | `JmpFin` | — | Jump if TOS is finite (does not pop). Always jumps in integer mode. |
-| `JmpTos` | `a ->` | Pop TOS, take its absolute value, and jump to that address. |
+| `JmpTos` | `a ->` | Pop TOS, take its absolute value, and jump to that address. Uses `saturating_abs` for ints.|
 
 All jump destinations are taken modulo program length.
 All integer arithmetic is wrapping unless specified otherwise.
