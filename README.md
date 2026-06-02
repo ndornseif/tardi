@@ -68,6 +68,7 @@ It has the same overflow behaviour as the main stack, so only the most recently 
 | `JmpTos` | `a ->` | Pop TOS, take its absolute value, and jump to that address. |
 
 All jump destinations are taken modulo program length.
+All integer arithmetic is wrapping unless specified otherwise.
 
 ## Building programs
 The `util` module provides helpers for constructing bytecode in Rust:

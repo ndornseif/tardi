@@ -1,5 +1,8 @@
 //! # Instruction definitions
 //!
+//! ## Arithmetic 
+//! All integer arithmetric is wrapping unless specified otherwise.
+//! Float arithmetric follows the IEEE rules.
 //!
 //! ## Jumps
 //! All jumps are executed modulo the program size, it is impossible to jump out of the program.
