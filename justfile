@@ -11,6 +11,7 @@ examples:
 
 lint:
   cargo clippy
+  cargo clippy --features int-word
 
 all: test-all lint
 
@@ -19,3 +20,4 @@ fuzz-f32:
 
 fuzz-i32:
   cargo fuzz run --features int-word fuzz_target_i32
+
