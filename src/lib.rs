@@ -2,6 +2,7 @@
 
 pub mod consts;
 pub mod disassembler;
+pub mod file;
 pub mod instr;
 pub mod interpreter;
 pub(crate) mod numeric;

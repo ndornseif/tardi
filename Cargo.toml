@@ -18,7 +18,10 @@ long-address = []
 
 [dependencies]
 strum = { version = "0.28.0", features = ["derive"] }
+bitflags = "2.12.1"
 
+[dev-dependencies]
+arbitrary = { version = "1", features = ["derive"] }
 
 [lints.rust]
 forgetting_references = "warn"
