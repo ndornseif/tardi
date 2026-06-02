@@ -171,6 +171,24 @@ macro_rules! op_conditional_jump {
     };
 }
 
+macro_rules! op_two_operand_typed {
+    ($name:ident, int: $int_method:ident, float: $float_op:tt) => {
+        #[cfg(feature = "int-word")]
+        op_two_operand!($name, $int_method);
+        #[cfg(not(feature = "int-word"))]
+        op_two_operand!($name, $float_op);
+    };
+}
+
+macro_rules! op_one_operand_typed {
+    ($name:ident, int: $int_method:ident, float: $float_op:tt) => {
+        #[cfg(feature = "int-word")]
+        op_one_operand!($name, $int_method);
+        #[cfg(not(feature = "int-word"))]
+        op_one_operand!($name, $float_op);
+    };
+}
+
 impl Interpreter {
     /// Initialize a new interpreter with a [`Vec`] of [`Instruction`] bytes,
     /// which encode [`OpCode`]s and their immediate values.
@@ -326,14 +344,52 @@ impl Interpreter {
         self.program_counter = self.read_address_immediate();
     }
 
-    #[cfg(feature = "int-word")]
+    op_conditional_jump!(op_jmp_zero, |s| s.stack.peek() == MachineWord::default());
+    op_conditional_jump!(op_jmp_pos, |s| s.stack.peek() > MachineWord::default());
+
+    op_two_operand!(op_max, max);
+    op_two_operand!(op_min, min);
+    op_one_operand!(op_abs, abs);
+
+    op_two_operand_typed!(op_add, int: wrapping_add, float: +);
+    op_two_operand_typed!(op_sub, int: wrapping_sub, float: -);
+    op_two_operand_typed!(op_mul, int: wrapping_mul, float: *);
+    op_one_operand_typed!(op_neg, int: saturating_neg, float: -);
+}
+
+#[cfg(feature = "int-word")]
+#[allow(clippy::multiple_inherent_impl)]
+impl Interpreter {
     #[allow(clippy::cast_sign_loss)]
     #[allow(clippy::cast_possible_truncation)]
     fn op_jmp_tos(&mut self) {
         let addr = self.stack.pop().saturating_abs();
         self.program_counter = (addr as usize) % self.instructions.len();
     }
-    #[cfg(not(feature = "int-word"))]
+
+    fn op_div(&mut self) {
+        let b = self.stack.pop();
+        let a = self.stack.pop();
+        self.stack
+            .push(a.checked_div(b).unwrap_or_default());
+    }
+
+    fn op_mod_div(&mut self) {
+        let b = self.stack.pop();
+        let a = self.stack.pop();
+        self.stack
+            .push(a.checked_rem(b).unwrap_or_default());
+    }
+
+    fn op_sqrt(&mut self) {
+        let a = self.stack.pop();
+        self.stack.push((a.unsigned_abs()).isqrt() as MachineWord);
+    }
+}
+
+#[cfg(not(feature = "int-word"))]
+#[allow(clippy::multiple_inherent_impl)]
+impl Interpreter {
     #[allow(clippy::cast_sign_loss)]
     #[allow(clippy::cast_possible_truncation)]
     fn op_jmp_tos(&mut self) {
@@ -341,78 +397,22 @@ impl Interpreter {
         self.program_counter = (addr as usize) % self.instructions.len();
     }
 
-    op_conditional_jump!(op_jmp_zero, |s| s.stack.peek() == MachineWord::default());
-    #[cfg(not(feature = "int-word"))]
     op_conditional_jump!(op_jmp_aprx_zero, |s| s.stack.peek().abs()
         <= (MachineWord::EPSILON * mw!(10)));
-    op_conditional_jump!(op_jmp_pos, |s| s.stack.peek() > MachineWord::default());
-    #[cfg(not(feature = "int-word"))]
     op_conditional_jump!(op_jmp_fin, |s| s.stack.peek().is_finite());
 
-    #[cfg(feature = "int-word")]
-    op_two_operand!(op_add, wrapping_add);
-    #[cfg(not(feature = "int-word"))]
-    op_two_operand!(op_add, +);
-
-    #[cfg(feature = "int-word")]
-    op_two_operand!(op_sub, wrapping_sub);
-    #[cfg(not(feature = "int-word"))]
-    op_two_operand!(op_sub, -);
-
-    #[cfg(feature = "int-word")]
-    op_two_operand!(op_mul, wrapping_mul);
-    #[cfg(not(feature = "int-word"))]
-    op_two_operand!(op_mul, *);
-
-    #[cfg(feature = "int-word")]
-    fn op_div(&mut self) {
-        let b = self.stack.pop();
-        let a = self.stack.pop();
-        self.stack
-            .push(a.checked_div(b).unwrap_or(MachineWord::default()));
-    }
-    #[cfg(not(feature = "int-word"))]
     op_two_operand!(op_div, /);
-
-    #[cfg(feature = "int-word")]
-    fn op_mod_div(&mut self) {
-        let b = self.stack.pop();
-        let a = self.stack.pop();
-        self.stack
-            .push(a.checked_rem(b).unwrap_or(MachineWord::default()));
-    }
-    #[cfg(not(feature = "int-word"))]
     op_two_operand!(op_mod_div, %);
 
-    op_two_operand!(op_max, max);
-    op_two_operand!(op_min, min);
-
-    #[cfg(not(feature = "int-word"))]
     fn op_sqrt(&mut self) {
         let a = self.stack.pop();
         self.stack.push((a.abs()).sqrt());
     }
-    #[cfg(feature = "int-word")]
-    fn op_sqrt(&mut self) {
-        let a = self.stack.pop();
-        self.stack.push((a.unsigned_abs()).isqrt() as MachineWord);
-    }
 
-    #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_round, round);
-    #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_trunc, trunc);
-    #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_ceil, ceil);
-    #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_floor, floor);
-
-    #[cfg(not(feature = "int-word"))]
-    op_one_operand!(op_neg, -);
-    #[cfg(feature = "int-word")]
-    op_one_operand!(op_neg, saturating_neg);
-
-    op_one_operand!(op_abs, abs);
 }
 
 #[cfg(test)]
