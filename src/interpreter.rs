@@ -341,9 +341,21 @@ impl Interpreter {
     #[cfg(not(feature = "int-word"))]
     op_conditional_jump!(op_jmp_fin, |s| s.stack.peek().is_finite());
 
+    #[cfg(feature = "int-word")]
+    op_two_operand!(op_add, wrapping_add);
+    #[cfg(not(feature = "int-word"))]
     op_two_operand!(op_add, +);
+
+    #[cfg(feature = "int-word")]
+    op_two_operand!(op_sub, wrapping_sub);
+    #[cfg(not(feature = "int-word"))]
     op_two_operand!(op_sub, -);
+
+    #[cfg(feature = "int-word")]
+    op_two_operand!(op_mul, wrapping_mul);
+    #[cfg(not(feature = "int-word"))]
     op_two_operand!(op_mul, *);
+
     #[cfg(feature = "int-word")]
     fn op_div(&mut self) {
         let b = self.stack.pop();
@@ -353,6 +365,7 @@ impl Interpreter {
     }
     #[cfg(not(feature = "int-word"))]
     op_two_operand!(op_div, /);
+
     #[cfg(feature = "int-word")]
     fn op_mod_div(&mut self) {
         let b = self.stack.pop();
@@ -362,8 +375,10 @@ impl Interpreter {
     }
     #[cfg(not(feature = "int-word"))]
     op_two_operand!(op_mod_div, %);
+
     op_two_operand!(op_max, max);
     op_two_operand!(op_min, min);
+
     #[cfg(not(feature = "int-word"))]
     fn op_sqrt(&mut self) {
         let a = self.stack.pop();
@@ -374,6 +389,7 @@ impl Interpreter {
         let a = self.stack.pop();
         self.stack.push((a.unsigned_abs()).isqrt() as MachineWord);
     }
+
     #[cfg(not(feature = "int-word"))]
     op_one_operand!(op_round, round);
     #[cfg(not(feature = "int-word"))]

@@ -110,8 +110,6 @@ A disassembler example in `examples/disassembler.rs` can be used to disassemble 
 cargo run --example disassemble --features int-word \
      fuzz/artifacts/fuzz_target_i32/crash-349d5a6c6ec6050d0e6651ebdb2dc2f8627e5aea
 ```
-```
-```
 
 ## Feature flags
 Four independent feature flags control the concrete types used throughout the crate.

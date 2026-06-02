@@ -1,7 +1,7 @@
 //! Test for crash cases found by the fuzzer.
 
 /// Both `Div` and `ModDiv` crashed if TOS was zero and an integer `MachineWord` was used.
-/// Makes sense sice div by zero is well defined for floats.
+/// Makes sense since div by zero is well defined for floats.
 ///
 /// ## Artifacts
 /// fuzz/artifacts/fuzz_target_i32/crash-349d5a6c6ec6050d0e6651ebdb2dc2f8627e5aea
@@ -12,14 +12,14 @@ mod div_by_zero {
 
     #[test]
     fn div_by_zero() {
-        let program = vec![OpCode::Div.into()];
+        let program = vec![OpCode::PushZero.into(), OpCode::Div.into()];
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.execute();
     }
 
     #[test]
     fn mod_div_by_zero() {
-        let program = vec![OpCode::ModDiv.into()];
+         let program = vec![OpCode::PushZero.into(), OpCode::ModDiv.into()];
         let mut int = Interpreter::new_from_program(program, vec![]);
         int.execute();
     }
@@ -46,6 +46,66 @@ mod negative_sqrt {
             vec![mw!(5)],
             int.output(),
             "sqrt of negative number should be the sqrt of its magnitude"
+        );
+    }
+}
+
+/// General crashes due to integer overflow.
+///
+/// ## Artifacts
+/// fuzz/artifacts/fuzz_target_i32/minimized-from-41dfc1f64ab83852e34b089c08f69af9391c1e73
+#[cfg(feature = "int-word")]
+mod int_ovfl {
+    use tardi::{instr::OpCode, interpreter::Interpreter, mw, consts::MachineWord};
+
+    #[test]
+    fn mul_ovfl() {
+        let program = vec![
+            OpCode::PushIn.into(),
+            OpCode::PushIn.into(),
+            OpCode::Mul.into(),
+            OpCode::PopOut.into(),
+        ];
+        let mut int = Interpreter::new_from_program(program, vec![MachineWord::MAX, mw!(2)]);
+        int.execute();
+        assert_eq!(
+            vec![mw!(-2)],
+            int.output(),
+            "integer multiplication should be wrapping."
+        );
+    }
+
+    #[test]
+    fn add_ovfl() {
+        let program = vec![
+            OpCode::PushIn.into(),
+            OpCode::PushIn.into(),
+            OpCode::Add.into(),
+            OpCode::PopOut.into(),
+        ];
+        let mut int = Interpreter::new_from_program(program, vec![MachineWord::MAX, mw!(2)]);
+        int.execute();
+        assert_eq!(
+            vec![MachineWord::MIN + mw!(1)],
+            int.output(),
+            "integer addition should be wrapping."
+        );
+    }
+
+    #[test]
+    fn sub_unfl() {
+        let program = vec![
+            OpCode::PushIn.into(),
+            OpCode::PushIn.into(),
+            OpCode::Sub.into(),
+            OpCode::PopOut.into(),
+        ];
+        let mut int = Interpreter::new_from_program(program, vec![mw!(2), MachineWord::MIN]);
+        int.execute();
+        assert_eq!(
+            vec![MachineWord::MAX - mw!(1)],
+            int.output(),
+            "integer subtraction should be wrapping."
         );
     }
 }
