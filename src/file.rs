@@ -85,7 +85,7 @@ const fn parse_version_to_byte(s: &str) -> u8 {
 const MAJOR: u32 = parse_version_to_byte(env!("CARGO_PKG_VERSION_MAJOR")) as u32;
 const MINOR: u32 = parse_version_to_byte(env!("CARGO_PKG_VERSION_MINOR")) as u32;
 const PATCH: u32 = parse_version_to_byte(env!("CARGO_PKG_VERSION_PATCH")) as u32;
-const FORMAT_VERSION: u32 = 1;
+const FORMAT_VERSION: u32 = 11;
 
 const VERSION_U32: u32 = (MAJOR << 24) | (MINOR << 16) | (PATCH << 8) | FORMAT_VERSION;
 
@@ -144,13 +144,13 @@ pub fn write_program<W: Write>(
 ) -> Result<(), FileError> {
     writer.write_all(&MAGIC.to_be_bytes())?;
 
+    writer.write_all(&VERSION_U32.to_be_bytes())?;
+    
     let mut flags = EXPECTED;
     if !data.is_empty() {
         flags |= FileFlags::DATA_ATTACHED;
     }
     writer.write_all(&flags.bits().to_be_bytes())?;
-
-    writer.write_all(&VERSION_U32.to_be_bytes())?;
 
     let data_count = u32::try_from(data.len()).map_err(|_| FileError::InvalidFormat)?;
     writer.write_all(&data_count.to_be_bytes())?;
@@ -190,15 +190,15 @@ pub fn read_program<R: Read>(
     }
 
     reader.read_exact(&mut buf4)?;
-    let file_flags = FileFlags::from_bits_truncate(u32::from_be_bytes(buf4));
-    if file_flags.difference(FileFlags::DATA_ATTACHED) != EXPECTED {
-        return Err(FileError::FlagMismatch);
-    }
-
-    reader.read_exact(&mut buf4)?;
     let file_format_version = u32::from_be_bytes(buf4) & 0xFF;
     if file_format_version != FORMAT_VERSION {
         return Err(FileError::VersionMissmatch);
+    }
+
+    reader.read_exact(&mut buf4)?;
+    let file_flags = FileFlags::from_bits_truncate(u32::from_be_bytes(buf4));
+    if file_flags.difference(FileFlags::DATA_ATTACHED) != EXPECTED {
+        return Err(FileError::FlagMismatch);
     }
 
     reader.read_exact(&mut buf4)?;

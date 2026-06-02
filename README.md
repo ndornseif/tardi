@@ -26,7 +26,7 @@ It has the same overflow behaviour as the main stack, so only the most recently 
 
 ## ~~Quirks~~ Notable properties
 
-- **Every byte sequence is valid.** No input can cause a decode error or panic inside the interpreter.
+- **Every byte sequence is valid.** No input ~can~ should cause a decode error or panic inside the interpreter. Extensive fuzzing has found no crashes in the current version.
 - **Jumps are always in-bounds.** All jump target addresses are taken modulo the program length, making it impossible to jump outside the program.
 - **Execution is bounded.** The interpreter stops after `MAX_INSTRUCTIONS` (65535 by default) instructions regardless of program content.
 - **Opcode numbering is fragile by design.** Instructions are decoded by `value % COUNT`, so inserting or removing an opcode shifts all subsequent mappings. Programs built against one opcode set are not forward-compatible.
