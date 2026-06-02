@@ -56,7 +56,7 @@ It has the same overflow behaviour as the main stack, so only the most recently 
 | `Ceil` | `a -> ceil(a)` | No-op in integer mode. |
 | `Floor` | `a -> floor(a)` | No-op in integer mode. |
 | `Neg` | `a -> -a` | Saturating for ints. e.g. `i32::MIN` -> `i32::MAX` |
-| `Abs` | `a -> \|a\|` | |
+| `Abs` | `a -> \|a\|` | Saturating for ints. |
 | `Swap` | `a b -> b a` | Swap the top two elements. |
 | `Remove` | `a ->` | Discard the top element. |
 | `Dup` | `a -> a a` | Duplicate the top element. |

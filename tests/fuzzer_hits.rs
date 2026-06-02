@@ -114,6 +114,7 @@ mod int_ovfl {
 ///
 /// ## Artifacts
 /// fuzz/artifacts/fuzz_target_i32/minimized-from-7074034724a4fa82431d8eef481626145587944a
+/// fuzz/artifacts/fuzz_target_i32/minimized-from-b2b74aa1a9a98524704428834379b4a0f8205ab7
 #[cfg(feature = "int-word")]
 mod int_min_negation {
     use tardi::{consts::MachineWord, instr::OpCode, interpreter::Interpreter};
@@ -127,8 +128,33 @@ mod int_min_negation {
 
     #[test]
     fn neg() {
-        let program = vec![OpCode::PushIn.into(), OpCode::Neg.into()];
+        let program = vec![
+            OpCode::PushIn.into(),
+            OpCode::Neg.into(),
+            OpCode::PopOut.into(),
+        ];
         let mut int = Interpreter::new_from_program(program, vec![MachineWord::MIN]);
         int.execute();
+        assert_eq!(
+            vec![MachineWord::MAX],
+            int.output(),
+            "neg of MIN should saturate to MAX"
+        );
+    }
+
+    #[test]
+    fn abs() {
+        let program = vec![
+            OpCode::PushIn.into(),
+            OpCode::Abs.into(),
+            OpCode::PopOut.into(),
+        ];
+        let mut int = Interpreter::new_from_program(program, vec![MachineWord::MIN]);
+        int.execute();
+        assert_eq!(
+            vec![MachineWord::MAX],
+            int.output(),
+            "abs of MIN should saturate to MAX"
+        );
     }
 }

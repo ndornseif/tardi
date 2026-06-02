@@ -349,8 +349,8 @@ impl Interpreter {
 
     op_two_operand!(op_max, max);
     op_two_operand!(op_min, min);
-    op_one_operand!(op_abs, abs);
 
+    op_one_operand_typed!(op_abs, int: saturating_abs, float: abs);
     op_two_operand_typed!(op_add, int: wrapping_add, float: +);
     op_two_operand_typed!(op_sub, int: wrapping_sub, float: -);
     op_two_operand_typed!(op_mul, int: wrapping_mul, float: *);
@@ -370,15 +370,13 @@ impl Interpreter {
     fn op_div(&mut self) {
         let b = self.stack.pop();
         let a = self.stack.pop();
-        self.stack
-            .push(a.checked_div(b).unwrap_or_default());
+        self.stack.push(a.checked_div(b).unwrap_or_default());
     }
 
     fn op_mod_div(&mut self) {
         let b = self.stack.pop();
         let a = self.stack.pop();
-        self.stack
-            .push(a.checked_rem(b).unwrap_or_default());
+        self.stack.push(a.checked_rem(b).unwrap_or_default());
     }
 
     fn op_sqrt(&mut self) {
