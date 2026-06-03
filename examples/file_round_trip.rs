@@ -28,7 +28,11 @@ fn main() {
         OpCode::PushImm.into(),
     ];
     program.extend_from_slice(&instructions_from_word(mw!(2)));
-    program.extend_from_slice(&[OpCode::Add.into(), OpCode::PopOut.into(), OpCode::Halt.into()]);
+    program.extend_from_slice(&[
+        OpCode::Add.into(),
+        OpCode::PopOut.into(),
+        OpCode::Halt.into(),
+    ]);
 
     let data: Vec<MachineWord> = vec![mw!(3)];
 
