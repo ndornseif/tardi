@@ -6,7 +6,7 @@
 //! The first negative value acts as a sentinel and halts.
 //!
 //! Disassembly as printed by this example:
-//!
+//! ```text
 //! 0x0000: 03             PushIn         
 //! 0x0001: 1b 0f 00       JmpPos          0x000f
 //! 0x0004: 1a 09 00       JmpAprxZero     0x0009
@@ -22,6 +22,7 @@
 //! 0x0016: 0f             Round          
 //! 0x0017: 06             PopOut         
 //! 0x0018: 18 1b 00       Jmp             0x001b -> 0x0000
+//! ```
 
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::use_debug)]
@@ -109,7 +110,15 @@ fn main() {
     disassemble_program(&mut s, &program).unwrap();
     println!("=== Disassembly ===\n{s}");
 
-    let mut interp = Interpreter::new_from_program(program, input);
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(file!())
+        .parent().unwrap()
+        .join("sqrt_stream.tardi");
+    println!("{:?}",path);
+    let file = std::fs::File::create(&path).expect("failed to create file");
+    tardi::file::write_program(file, &program, &input).expect("failed to write program to file");
+
+    let mut interp = Interpreter::new(program, input);
     let start = Instant::now();
     interp.execute();
     let elapsed = start.elapsed();
