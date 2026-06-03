@@ -16,19 +16,19 @@ use crate::instr::OpCode;
 pub fn word_from_instructions(parts: [Instruction; INSTR_PER_WORD]) -> MachineWord {
     let mut bytes = [0_u8; WORD_SIZE];
     for (part, chunk) in parts.iter().zip(bytes.chunks_mut(INSTRUCTION_SIZE)) {
-        chunk.copy_from_slice(&part.to_le_bytes());
+        chunk.copy_from_slice(&part.to_be_bytes());
     }
-    MachineWord::from_le_bytes(bytes)
+    MachineWord::from_be_bytes(bytes)
 }
 
 /// Turn a [`MachineWord`] into its representaion as [`Instruction`]s.
 ///
 /// Primarily used to encode immediate values into bytecode.
 pub fn instructions_from_word(word: MachineWord) -> [Instruction; INSTR_PER_WORD] {
-    let bytes = word.to_le_bytes();
+    let bytes = word.to_be_bytes();
     let mut parts = [Instruction::default(); INSTR_PER_WORD];
     for (part, chunk) in parts.iter_mut().zip(bytes.chunks(INSTRUCTION_SIZE)) {
-        *part = Instruction::from_le_bytes(chunk.try_into().unwrap());
+        *part = Instruction::from_be_bytes(chunk.try_into().unwrap());
     }
     parts
 }
@@ -39,19 +39,19 @@ pub fn instructions_from_word(word: MachineWord) -> [Instruction; INSTR_PER_WORD
 pub fn address_from_instructions(parts: [Instruction; INSTR_PER_ADDRESS]) -> Address {
     let mut bytes = [0_u8; ADDRESS_SIZE];
     for (part, chunk) in parts.iter().zip(bytes.chunks_mut(INSTRUCTION_SIZE)) {
-        chunk.copy_from_slice(&part.to_le_bytes());
+        chunk.copy_from_slice(&part.to_be_bytes());
     }
-    Address::from_le_bytes(bytes)
+    Address::from_be_bytes(bytes)
 }
 
 /// Turn a [`Address`] into its representaion as [`Instruction`]s.
 ///
 /// Primarily used to encode jump target addresses into bytecode.
 pub fn instructions_from_address(addr: Address) -> [Instruction; INSTR_PER_ADDRESS] {
-    let bytes = addr.to_le_bytes();
+    let bytes = addr.to_be_bytes();
     let mut parts = [Instruction::default(); INSTR_PER_ADDRESS];
     for (part, chunk) in parts.iter_mut().zip(bytes.chunks(INSTRUCTION_SIZE)) {
-        *part = Instruction::from_le_bytes(chunk.try_into().unwrap());
+        *part = Instruction::from_be_bytes(chunk.try_into().unwrap());
     }
     parts
 }
