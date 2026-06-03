@@ -82,12 +82,13 @@ const fn parse_version_to_byte(s: &str) -> u8 {
     rslt as u8
 }
 
-const MAJOR: u32 = parse_version_to_byte(env!("CARGO_PKG_VERSION_MAJOR")) as u32;
-const MINOR: u32 = parse_version_to_byte(env!("CARGO_PKG_VERSION_MINOR")) as u32;
-const PATCH: u32 = parse_version_to_byte(env!("CARGO_PKG_VERSION_PATCH")) as u32;
-const FORMAT_VERSION: u32 = 11;
+const MAJOR: u8 = parse_version_to_byte(env!("CARGO_PKG_VERSION_MAJOR"));
+const MINOR: u8 = parse_version_to_byte(env!("CARGO_PKG_VERSION_MINOR"));
+const PATCH: u8 = parse_version_to_byte(env!("CARGO_PKG_VERSION_PATCH"));
+const FORMAT_VERSION: u8 = 11;
 
-const VERSION_U32: u32 = (MAJOR << 24) | (MINOR << 16) | (PATCH << 8) | FORMAT_VERSION;
+const VERSION_U32: u32 =
+    ((MAJOR as u32) << 24) | ((MINOR as u32) << 16) | ((PATCH as u32) << 8) | FORMAT_VERSION as u32;
 
 /// Errors that can occur when reading or writing a tardi file.
 #[derive(Debug)]
@@ -145,7 +146,7 @@ pub fn write_program<W: Write>(
     writer.write_all(&MAGIC.to_be_bytes())?;
 
     writer.write_all(&VERSION_U32.to_be_bytes())?;
-    
+
     let mut flags = EXPECTED;
     if !data.is_empty() {
         flags |= FileFlags::DATA_ATTACHED;
@@ -190,7 +191,8 @@ pub fn read_program<R: Read>(
     }
 
     reader.read_exact(&mut buf4)?;
-    let file_format_version = u32::from_be_bytes(buf4) & 0xFF;
+    #[allow(clippy::cast_possible_truncation)]
+    let file_format_version = u32::from_be_bytes(buf4) as u8;
     if file_format_version != FORMAT_VERSION {
         return Err(FileError::VersionMissmatch);
     }

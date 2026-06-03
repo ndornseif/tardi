@@ -13,14 +13,14 @@ mod div_by_zero {
     #[test]
     fn div_by_zero() {
         let program = vec![OpCode::PushZero.into(), OpCode::Div.into()];
-        let mut int = Interpreter::new_from_program(program, vec![]);
+        let mut int = Interpreter::new(program, vec![]);
         int.execute();
     }
 
     #[test]
     fn mod_div_by_zero() {
         let program = vec![OpCode::PushZero.into(), OpCode::ModDiv.into()];
-        let mut int = Interpreter::new_from_program(program, vec![]);
+        let mut int = Interpreter::new(program, vec![]);
         int.execute();
     }
 }
@@ -40,7 +40,7 @@ mod negative_sqrt {
             OpCode::Sqrt.into(),
             OpCode::PopOut.into(),
         ];
-        let mut int = Interpreter::new_from_program(program, vec![mw!(-25)]);
+        let mut int = Interpreter::new(program, vec![mw!(-25)]);
         int.execute();
         assert_eq!(
             vec![mw!(5)],
@@ -66,7 +66,7 @@ mod int_ovfl {
             OpCode::Mul.into(),
             OpCode::PopOut.into(),
         ];
-        let mut int = Interpreter::new_from_program(program, vec![MachineWord::MAX, mw!(2)]);
+        let mut int = Interpreter::new(program, vec![MachineWord::MAX, mw!(2)]);
         int.execute();
         assert_eq!(
             vec![mw!(-2)],
@@ -83,7 +83,7 @@ mod int_ovfl {
             OpCode::Add.into(),
             OpCode::PopOut.into(),
         ];
-        let mut int = Interpreter::new_from_program(program, vec![MachineWord::MAX, mw!(2)]);
+        let mut int = Interpreter::new(program, vec![MachineWord::MAX, mw!(2)]);
         int.execute();
         assert_eq!(
             vec![MachineWord::MIN + mw!(1)],
@@ -100,7 +100,7 @@ mod int_ovfl {
             OpCode::Sub.into(),
             OpCode::PopOut.into(),
         ];
-        let mut int = Interpreter::new_from_program(program, vec![mw!(2), MachineWord::MIN]);
+        let mut int = Interpreter::new(program, vec![mw!(2), MachineWord::MIN]);
         int.execute();
         assert_eq!(
             vec![MachineWord::MAX - mw!(1)],
@@ -122,7 +122,7 @@ mod int_min_negation {
     #[test]
     fn jump_tos() {
         let program = vec![OpCode::PushIn.into(), OpCode::JmpTos.into()];
-        let mut int = Interpreter::new_from_program(program, vec![MachineWord::MIN]);
+        let mut int = Interpreter::new(program, vec![MachineWord::MIN]);
         int.execute();
     }
 
@@ -133,7 +133,7 @@ mod int_min_negation {
             OpCode::Neg.into(),
             OpCode::PopOut.into(),
         ];
-        let mut int = Interpreter::new_from_program(program, vec![MachineWord::MIN]);
+        let mut int = Interpreter::new(program, vec![MachineWord::MIN]);
         int.execute();
         assert_eq!(
             vec![MachineWord::MAX],
@@ -149,7 +149,7 @@ mod int_min_negation {
             OpCode::Abs.into(),
             OpCode::PopOut.into(),
         ];
-        let mut int = Interpreter::new_from_program(program, vec![MachineWord::MIN]);
+        let mut int = Interpreter::new(program, vec![MachineWord::MIN]);
         int.execute();
         assert_eq!(
             vec![MachineWord::MAX],

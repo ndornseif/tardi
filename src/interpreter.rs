@@ -122,6 +122,7 @@ pub struct Interpreter {
     execution_count: usize,
     halt_reason: HaltReason,
     instruction_limit: usize,
+    mask_halt: bool,
 }
 
 macro_rules! op_one_operand {
@@ -193,17 +194,17 @@ impl Interpreter {
     /// Initialize a new interpreter with a [`Vec`] of [`Instruction`] bytes,
     /// which encode [`OpCode`]s and their immediate values.
     /// Input data can be supplied as a [`Vec`] of [`MachineWord`]s.
-    /// If `program` is longer than the max value representable by `Address` it will
-    /// be cut short to that length.
-    /// The interpreter will halt automaticaly after `MAX_INSTRUCTIONS` instructions
-    /// have been executed. Use [`Self::new_with_program_and_limit`] to set a custom limt.
-    pub fn new_from_program(program: Vec<Instruction>, input: Vec<MachineWord>) -> Self {
-        Self::new_with_program_and_limit(program, input, MAX_INSTRUCTIONS)
+    /// If `program` is longer than the max value representable by [`Address`] it will
+    /// be truncated to that length.
+    /// The interpreter will halt automatically after [`MAX_INSTRUCTIONS`] instructions
+    /// have been executed. Use [`Self::new_with_limit`] to set a custom limit.
+    pub fn new(program: Vec<Instruction>, input: Vec<MachineWord>) -> Self {
+        Self::new_with_limit(program, input, MAX_INSTRUCTIONS)
     }
 
-    /// Functions like [`Self::new_from_program`] but allows specifying
-    /// the number of instructions to execute before the interpreter halts.
-    pub fn new_with_program_and_limit(
+    /// Like [`Self::new`] but allows specifying the number of instructions
+    /// to execute before the interpreter halts.
+    pub fn new_with_limit(
         mut program: Vec<Instruction>,
         input: Vec<MachineWord>,
         instruction_limit: usize,
@@ -217,18 +218,37 @@ impl Interpreter {
         }
     }
 
+    /// Return a reference to the main stack.
+    pub fn stack(&self) -> &Stack<MachineWord, MAX_STACK> {
+        &self.stack
+    }
+
+    /// Return a reference to the output stack.
+    pub fn output_stack(&self) -> &Stack<MachineWord, MAX_OUTPUT> {
+        &self.output
+    }
+
+    /// Return the number of instructions executed by this interpreter.
+    pub fn execution_count(&self) -> usize {
+        self.execution_count
+    }
+
+    /// Return the maximum number of instructions this interpreter will execute before halting.
+    pub fn instruction_limit(&self) -> usize {
+        self.instruction_limit
+    }
+
     /// Returns `true` if the interpreter has halted.
     pub fn halted(&self) -> bool {
         self.halted
     }
 
-    /// Returns reason why interpreter was halted.
-    /// Will return `None` if interpreter is not halted.
+    /// Returns the reason why the interpreter halted, or `None` if it has not halted.
     pub fn halt_reason(&self) -> Option<HaltReason> {
         self.halted.then_some(self.halt_reason)
     }
 
-    /// Return contents of the output stack as Vec.
+    /// Return the contents of the output stack as a [`Vec`], top element first.
     pub fn output(&self) -> Vec<MachineWord> {
         self.output.to_vec()
     }
@@ -238,9 +258,55 @@ impl Interpreter {
         &self.instructions
     }
 
+    /// Return the current program counter.
+    pub fn program_counter(&self) -> usize {
+        self.program_counter
+    }
+
     /// Return the remaining input data.
+    /// The last element is the next value that will be consumed by `PushIn`.
     pub fn input(&self) -> &[MachineWord] {
         &self.input
+    }
+
+    /// Return the [`OpCode`] at the current program counter.
+    /// Returns `None` if the program counter is past the end of the program.
+    pub fn current_opcode(&self) -> Option<OpCode> {
+        self.instructions
+            .get(self.program_counter)
+            .map(|&b| b.into())
+    }
+
+    /// Peek at the immediate [`MachineWord`] encoded in the bytes following the current opcode.
+    /// Only meaningful when the current instruction is `PushImm`.
+    pub fn peek_immediate(&self) -> MachineWord {
+        let pc = self.program_counter + 1;
+        let mut imm_parts = [Instruction::default(); INSTR_PER_WORD];
+        for (i, part) in imm_parts.iter_mut().enumerate() {
+            *part = self.instructions.get(pc + i).copied().unwrap_or_default();
+        }
+        word_from_instructions(imm_parts)
+    }
+
+    /// Peek at the jump address encoded in the bytes following the current opcode.
+    /// Only meaningful when the current instruction is a jump with an immediate address.
+    /// Returns the effective target after applying modulo program length.
+    pub fn peek_jump_address(&self) -> usize {
+        if self.instructions.is_empty() {
+            return 0;
+        }
+        let pc = self.program_counter + 1;
+        let mut addr_parts = [Instruction::default(); INSTR_PER_ADDRESS];
+        for (i, part) in addr_parts.iter_mut().enumerate() {
+            *part = self.instructions.get(pc + i).copied().unwrap_or_default();
+        }
+        address_from_instructions(addr_parts) as usize % self.instructions.len()
+    }
+
+    /// Control whether the `Halt` instruction is ignored.
+    /// When `true`, `Halt` opcodes are treated as no-ops.
+    pub fn set_halt_masking(&mut self, masked: bool) {
+        self.mask_halt = masked;
     }
 
     /// Execute program.
@@ -282,6 +348,9 @@ impl Interpreter {
     fn op_nop(&mut self) {}
 
     fn op_halt(&mut self) {
+        if self.mask_halt {
+            return;
+        }
         self.halted = true;
         self.halt_reason = HaltReason::HaltInstruction;
     }
@@ -432,7 +501,7 @@ mod tests {
     #[test]
     fn halt_on_halt_instruction() {
         let program = vec![OpCode::Nop.into(), OpCode::Halt.into()];
-        let mut int = Interpreter::new_from_program(program, vec![]);
+        let mut int = Interpreter::new(program, vec![]);
         int.execute();
         assert_eq!(Some(HaltReason::HaltInstruction), int.halt_reason(),);
     }
@@ -440,7 +509,7 @@ mod tests {
     #[test]
     fn halt_on_program_end() {
         let program = vec![OpCode::Nop.into(), OpCode::Nop.into()];
-        let mut int = Interpreter::new_from_program(program, vec![]);
+        let mut int = Interpreter::new(program, vec![]);
         int.execute();
         assert_eq!(Some(HaltReason::EndOfProgram), int.halt_reason(),);
     }
@@ -451,7 +520,7 @@ mod tests {
         // Constructing an infinite loop.
         let offset = push_jmp(&mut program, OpCode::Jmp);
         patch_jmp(&mut program, offset, 0);
-        let mut int = Interpreter::new_from_program(program, vec![]);
+        let mut int = Interpreter::new(program, vec![]);
         int.execution_count = MAX_INSTRUCTIONS - 10;
         int.execute();
         assert_eq!(Some(HaltReason::MaxInstructions), int.halt_reason(),);
@@ -464,7 +533,7 @@ mod tests {
         // Constructing an infinite loop.
         let offset = push_jmp(&mut program, OpCode::Jmp);
         patch_jmp(&mut program, offset, 0);
-        let mut int = Interpreter::new_with_program_and_limit(program, vec![], TEST_LIMIT);
+        let mut int = Interpreter::new_with_limit(program, vec![], TEST_LIMIT);
         int.execute();
         assert_eq!(
             Some(HaltReason::MaxInstructions),
@@ -482,7 +551,7 @@ mod tests {
         let expected: MachineWord = mw!(1234);
         let mut program = vec![OpCode::PushImm as Instruction];
         program.extend_from_slice(&instructions_from_word(expected));
-        let mut int = Interpreter::new_from_program(program, vec![]);
+        let mut int = Interpreter::new(program, vec![]);
         int.dispatch();
         assert_eq!(
             INSTR_PER_WORD + 1,
@@ -500,7 +569,7 @@ mod tests {
     fn push_imm_out_of_bounds_bytes_are_zero() {
         // PushImm with no following bytes: missing immediate bytes default to zero.
         let program = vec![OpCode::PushImm as Instruction];
-        let mut int = Interpreter::new_from_program(program, vec![]);
+        let mut int = Interpreter::new(program, vec![]);
         int.dispatch();
         assert_eq!(MachineWord::default(), int.stack.peek());
     }
@@ -515,7 +584,7 @@ mod tests {
         program.extend_from_slice(&[OpCode::PopOut.into(), OpCode::Halt.into()]);
         patch_jmp(&mut program, jmp_offset, pop_pos);
 
-        let mut int = Interpreter::new_from_program(program, vec![]);
+        let mut int = Interpreter::new(program, vec![]);
         int.execute();
         assert_eq!(vec![mw!(1)], int.output());
     }
@@ -534,7 +603,7 @@ mod tests {
                 let pop_pos = program.len();
                 program.extend_from_slice(&[OpCode::PopOut.into(), OpCode::Halt.into()]);
                 patch_jmp(&mut program, jmp_offset, pop_pos);
-                let mut int = Interpreter::new_from_program(program, vec![mw!($val_taken)]);
+                let mut int = Interpreter::new(program, vec![mw!($val_taken)]);
                 int.execute();
                 assert_eq!(vec![mw!($val_taken)], int.output());
             }
@@ -554,7 +623,7 @@ mod tests {
                 let pop_pos = program.len();
                 program.extend_from_slice(&[OpCode::PopOut.into(), OpCode::Halt.into()]);
                 patch_jmp(&mut program, jmp_offset, pop_pos);
-                let mut int = Interpreter::new_from_program(program, vec![mw!($val_skipped)]);
+                let mut int = Interpreter::new(program, vec![mw!($val_skipped)]);
                 int.execute();
                 assert_eq!(vec![mw!(2)], int.output());
             }
@@ -596,7 +665,7 @@ mod tests {
             OpCode::Add.into(),
             OpCode::PopOut.into(),
         ];
-        let mut int = Interpreter::new_from_program(program, vec![mw!(4)]);
+        let mut int = Interpreter::new(program, vec![mw!(4)]);
         int.execute();
         assert_eq!(vec![mw!(2)], int.output());
     }
@@ -612,7 +681,7 @@ mod tests {
         ];
         let data: Vec<MachineWord> = vec![mw!(3)];
         let expected_sum = data[0] + mw!(1);
-        let mut int = Interpreter::new_from_program(program, data.clone());
+        let mut int = Interpreter::new(program, data.clone());
         assert_eq!(
             MachineWord::default(),
             int.stack.peek(),
@@ -663,7 +732,7 @@ mod tests {
                     OpCode::PopOut.into(),
                 ];
                 let data: Vec<MachineWord> = vec![mw!($val_a), mw!($val_b)];
-                let mut int = Interpreter::new_from_program(program, data.clone());
+                let mut int = Interpreter::new(program, data.clone());
                 int.execute();
                 assert_eq!(vec![mw!($rslt)], int.output());
             }
@@ -683,7 +752,7 @@ mod tests {
             fn $name() {
                 let program: Vec<Instruction> =
                     vec![OpCode::PushIn.into(), $opcode.into(), OpCode::PopOut.into()];
-                let mut int = Interpreter::new_from_program(program, vec![mw!($val_a)]);
+                let mut int = Interpreter::new(program, vec![mw!($val_a)]);
                 int.execute();
                 assert_eq!(vec![mw!($rslt)], int.output());
             }
@@ -710,7 +779,7 @@ mod tests {
             OpCode::PopOut.into(),
             OpCode::Halt.into(),
         ];
-        let mut int = Interpreter::new_from_program(program, vec![mw!(3), mw!(7)]);
+        let mut int = Interpreter::new(program, vec![mw!(3), mw!(7)]);
         int.execute();
         assert_eq!(vec![mw!(7)], int.output());
     }
@@ -724,7 +793,7 @@ mod tests {
             OpCode::PopOut.into(),
             OpCode::Halt.into(),
         ];
-        let mut int = Interpreter::new_from_program(program, vec![mw!(3), mw!(7)]);
+        let mut int = Interpreter::new(program, vec![mw!(3), mw!(7)]);
         int.execute();
         assert_eq!(vec![mw!(7)], int.output(),);
     }
@@ -738,7 +807,7 @@ mod tests {
             OpCode::PopOut.into(),
             OpCode::Halt.into(),
         ];
-        let mut int = Interpreter::new_from_program(program, vec![mw!(5)]);
+        let mut int = Interpreter::new(program, vec![mw!(5)]);
         int.execute();
         assert_eq!(vec![mw!(5), mw!(5)], int.output(),);
     }

@@ -3,6 +3,8 @@
 // `peek_at` and `len` will remain unused for now.
 #![allow(dead_code)]
 
+use core::fmt;
+
 /// Represents a stack with a fixed size set by `N`.
 ///
 /// Overflowing the stack will drop the bottom element.
@@ -11,7 +13,7 @@
 /// Trying to pop from an empty stack will return `T::default()`.
 /// Since `N` is used extensivley in modulo division choosing a power of
 /// two will cause performance improvements.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Stack<T, const N: usize> {
     values: [T; N],
     /// Used to index the stack array as `values[total_pushes % N]`.
@@ -71,6 +73,22 @@ impl<T: Default + Clone + Copy, const N: usize> Stack<T, N> {
         (0..self.depth)
             .map(|i| self.values[(self.total_pushes - 1 - i) % N])
             .collect()
+    }
+}
+
+impl<T: Default + Clone + Copy + std::fmt::Display, const N: usize> fmt::Display for Stack<T, N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        const MAX_PRINTS: usize = 10;
+        write!(f, "[")?;
+        let parts: Vec<String> = (0..self.len().min(MAX_PRINTS))
+            .map(|i| self.peek_at(i).to_string())
+            .collect();
+        write!(f, "{}", parts.join(", "))?;
+        if self.len() > MAX_PRINTS {
+            write!(f, " ... {} more elements", self.len() - MAX_PRINTS)?;
+        }
+        writeln!(f, "]")?;
+        Ok(())
     }
 }
 
