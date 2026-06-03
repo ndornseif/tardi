@@ -14,7 +14,7 @@ struct Input {
 }
 
 fuzz_target!(|input: Input| {
-    let mut interpreter = Interpreter::new_from_program(input.bytecode, input.data);
+    let mut interpreter = Interpreter::new(input.bytecode, input.data);
     interpreter.execute();
 });
 
