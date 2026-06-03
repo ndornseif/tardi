@@ -112,9 +112,10 @@ fn main() {
 
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join(file!())
-        .parent().unwrap()
+        .parent()
+        .unwrap()
         .join("sqrt_stream.tardi");
-    println!("{:?}",path);
+    println!("{:?}", path);
     let file = std::fs::File::create(&path).expect("failed to create file");
     tardi::file::write_program(file, &program, &input).expect("failed to write program to file");
 
