@@ -1,46 +1,59 @@
 //! General utility functions
 
-use crate::consts::{Address, INSTR_PER_ADDRESS, INSTR_PER_WORD, Instruction, MachineWord};
+// Ok here since the `.try_into()` calls are guaranteed to work
+// All sized are defined at complie time.
+#![allow(clippy::missing_panics_doc)]
+
+use crate::consts::{
+    ADDRESS_SIZE, Address, INSTR_PER_ADDRESS, INSTR_PER_WORD, INSTRUCTION_SIZE, Instruction,
+    MachineWord, WORD_SIZE,
+};
 use crate::instr::OpCode;
 
 /// Turn a set of [`Instruction`]s into its representaion as an [`MachineWord`].
 ///
 /// This representaion is the one used by the VM to accept immediate values.
 pub fn word_from_instructions(parts: [Instruction; INSTR_PER_WORD]) -> MachineWord {
-    // SAFETY:
-    // `INSTR_PER_WORD` is calculated based on `mem::size_of` to ensure correct size.
-    // That all sequences of bytes must represent a valid value
-    // is a fundamental restriction placed on [`MachineWord`] and [`Instruction`] by design.
-    // These are IEEE floating point or integer values.
-    // Outstanding decision on endianess.
-    unsafe { std::mem::transmute(parts) }
-}
-
-/// Turn a set of [`Instruction`]s into an [`Address`] type.
-///
-/// Used by the VM to accept jump target addresses from the bytecode.
-pub fn address_from_instructions(parts: [Instruction; INSTR_PER_ADDRESS]) -> Address {
-    // SAFETY:
-    // See [`word_from_instructions`].
-    unsafe { std::mem::transmute(parts) }
+    let mut bytes = [0_u8; WORD_SIZE];
+    for (part, chunk) in parts.iter().zip(bytes.chunks_mut(INSTRUCTION_SIZE)) {
+        chunk.copy_from_slice(&part.to_le_bytes());
+    }
+    MachineWord::from_le_bytes(bytes)
 }
 
 /// Turn a [`MachineWord`] into its representaion as [`Instruction`]s.
 ///
 /// Primarily used to encode immediate values into bytecode.
 pub fn instructions_from_word(word: MachineWord) -> [Instruction; INSTR_PER_WORD] {
-    // SAFETY:
-    // See [`word_from_instructions`].
-    unsafe { std::mem::transmute(word) }
+    let bytes = word.to_le_bytes();
+    let mut parts = [Instruction::default(); INSTR_PER_WORD];
+    for (part, chunk) in parts.iter_mut().zip(bytes.chunks(INSTRUCTION_SIZE)) {
+        *part = Instruction::from_le_bytes(chunk.try_into().unwrap());
+    }
+    parts
+}
+
+/// Turn a set of [`Instruction`]s into an [`Address`] type.
+///
+/// Used by the VM to accept jump target addresses from the bytecode.
+pub fn address_from_instructions(parts: [Instruction; INSTR_PER_ADDRESS]) -> Address {
+    let mut bytes = [0_u8; ADDRESS_SIZE];
+    for (part, chunk) in parts.iter().zip(bytes.chunks_mut(INSTRUCTION_SIZE)) {
+        chunk.copy_from_slice(&part.to_le_bytes());
+    }
+    Address::from_le_bytes(bytes)
 }
 
 /// Turn a [`Address`] into its representaion as [`Instruction`]s.
 ///
 /// Primarily used to encode jump target addresses into bytecode.
 pub fn instructions_from_address(addr: Address) -> [Instruction; INSTR_PER_ADDRESS] {
-    // SAFETY:
-    // See: [`word_from_instruction`].
-    unsafe { std::mem::transmute(addr) }
+    let bytes = addr.to_le_bytes();
+    let mut parts = [Instruction::default(); INSTR_PER_ADDRESS];
+    for (part, chunk) in parts.iter_mut().zip(bytes.chunks(INSTRUCTION_SIZE)) {
+        *part = Instruction::from_le_bytes(chunk.try_into().unwrap());
+    }
+    parts
 }
 
 /// Append a jump [`OpCode`] with a placeholder address to `program`.

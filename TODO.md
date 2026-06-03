@@ -2,7 +2,7 @@
 
 ## High
 
-- [ ] Decide on endianness and whether to use `bytemuck` in `util.rs` for the
+- [x] Decide on endianness and whether to use `bytemuck` in `util.rs` for the
       transmute-based converter functions.
 - [x] Fix tests that fail when `MachineWord` is an integer type: `floor`, `ceil`, etc.
 - [x] Implement `JmpTos` — the remaining jump instruction missing from the interpreter.
@@ -25,9 +25,11 @@
 - [ ] Make use of feature flags in disassembler to replace `format_imm`. Remove it from 
       numeric.rs
 - [x] Allow changing the execution limit at runtime.
-- [ ] Expand disassembler to deal with fuzzer crash artifacts that contain data not just
+- [x] Expand disassembler to deal with fuzzer crash artifacts that contain data not just
       instructions.
 - [ ] Add example to print execution of program step by step for debugging.
+- [ ] More ergonomic API for `Interpreter`, any new methods that would make sense?
+- [ ] Explore what happens when one jumps into the middle of an imm value or jmp target address.
 
 ## Low
 
