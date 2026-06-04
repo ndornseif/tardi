@@ -71,7 +71,7 @@ mod int_ovfl {
         assert_eq!(
             vec![mw!(-2)],
             int.output(),
-            "integer multiplication should be wrapping."
+            "integer multiplication should be wrapping"
         );
     }
 
@@ -88,7 +88,7 @@ mod int_ovfl {
         assert_eq!(
             vec![MachineWord::MIN + mw!(1)],
             int.output(),
-            "integer addition should be wrapping."
+            "integer addition should be wrapping"
         );
     }
 
@@ -105,7 +105,7 @@ mod int_ovfl {
         assert_eq!(
             vec![MachineWord::MAX - mw!(1)],
             int.output(),
-            "integer subtraction should be wrapping."
+            "integer subtraction should be wrapping"
         );
     }
 }
